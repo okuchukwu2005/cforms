@@ -1,0 +1,55 @@
+// main.c
+#include <stdio.h>
+#include <stdbool.h>
+#include "forms/form.h"
+
+int main(void) {
+    App app = init();
+    app.window = new_window_("My Window", 1280, 720);
+    
+    Parent* container = new_container_(app.window, 100, 100, 300, 200, COLOR_GRAY);
+
+    // Enable moving, title bar, close button, and resizing
+    set_container_properties_(container, true, "My Container", true, true, true);
+    
+    Parent* container2 = new_container_(app.window, 300, 100, 300, 200, COLOR_GRAY);
+
+    // Enable moving, title bar, close button, and resizing
+    set_container_properties_(container2, true, "My Container", true, true, true);
+
+    // Create dropdown options
+    char* options[] = {"Option 1", "Option 2", "Option 3", "Option 4"};
+    int option_count = 4;
+    Drop* dropdown = new_drop_down_(container, 300, 400, 310, 60, options, option_count);
+    
+    // ---------- RADIO BUTTON DEMO ----------
+    // Group 1 (only one of these three can be selected at a time)
+    new_radio_button_(container, 150, 200, 20, 20, "Option 1", 1);
+    new_radio_button_(container, 150, 230, 20, 20, "Option 2", 1);
+    new_radio_button_(container, 150, 260, 20, 20, "Option 3", 1);
+
+    // Group 2 (independent from group 1)
+    new_radio_button_(container, 350, 200, 20, 20, "Choice A", 2);
+    new_radio_button_(container, 350, 230, 20, 20, "Choice B", 2);
+
+    TextBox* texty = new_textbox_(container2, 5, 5, 300, 1024);
+
+    // ---------- SLIDER DEMO ----------
+    // Create a slider in container (horizontal, 100px wide, 20px high, range 0-100, starting at 50)
+    Slider* slider1 = new_slider(container, 10, 500, 200, 80, 0, 100, 50, "Volume");
+    // Create another slider in container2
+    Slider* slider2 = new_slider(container2, 10, 550, 200, 50, 0, 100, 75, "Brightness");
+
+    app_run_(app.window);
+
+    // Free resources (add sliders if you implement a free_slider function)
+    // free_slider(slider1);
+    // free_slider(slider2);
+    // free_drop_(dropdown);
+    // free_con_(container);
+    // free_con_(container2);
+
+    return 0;
+}
+
+// Modified app_run_ function in form.h or wherever it's defined
