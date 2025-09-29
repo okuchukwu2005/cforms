@@ -56,14 +56,14 @@ static inline void set_container_properties_(Parent* container,
                                bool moveable,
                                const char* title,
                                bool has_title_bar,
-                               bool closeable,
-                               bool resizeable) {
+                               bool closeable/*,
+                               bool resizeable*/) {
     if (!container) return;
     container->moveable = moveable;
     container->title_bar = title;
     container->has_title_bar = has_title_bar;
     container->closeable = closeable;
-    container->resizeable = resizeable;
+    container->resizeable = false; // should be assigned to resizeable, but feature is off for now
     container->title_height = has_title_bar ? 30 : 0;
 }
 

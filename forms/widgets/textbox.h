@@ -577,18 +577,4 @@ void update_all_registered_textboxs(SDL_Event event) {
             update_textbox(textbox_widgets[i], event);
         }
     }
-
-    // Manage global text input
-    int any_active = 0;
-    for (int i = 0; i < textboxs_count; i++) {
-        if (textbox_widgets[i] && textbox_widgets[i]->is_active) {
-            any_active = 1;
-            break;
-        }
-    }
-    if (any_active) {
-        SDL_StartTextInput();
-    } else {
-        SDL_StopTextInput();
-    }
 }

@@ -8,4 +8,5 @@
 #include"widgets/radio.h"
 #include"widgets/textbox.h"
 #include"widgets/slider.h"
+#include"widgets/button.h"
 #include"core/app.h"

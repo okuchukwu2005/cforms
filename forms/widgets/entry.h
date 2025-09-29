@@ -388,18 +388,4 @@ void update_all_registered_entrys(SDL_Event event) {
             update_entry(entry_widgets[i], event);
         }
     }
-
-    // After processing, manage global text input based on if ANY entry is active
-    int any_active = 0;
-    for (int i = 0; i < entrys_count; i++) {
-        if (entry_widgets[i] && entry_widgets[i]->is_active) {
-            any_active = 1;
-            break;
-        }
-    }
-    if (any_active) {
-        SDL_StartTextInput();
-    } else {
-        SDL_StopTextInput();
-    }
 }

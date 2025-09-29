@@ -2,21 +2,22 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "forms/form.h"
-
+void my_callback(void) {
+    printf("Button was clicked!\n");
+    // Add custom logic, e.g., open a dialog, submit a form, etc.
+}
 int main(void) {
     App app = init();
-    app.window = new_window_("My Window", 1280, 720);
+    app.window = new_window_("My Window", 1000, 700);
     
-    Parent* container = new_container_(app.window, 100, 100, 300, 200, COLOR_GRAY);
+    Parent* container = new_container_(app.window, 10, 10, 320, 600, COLOR_GRAY);
 
-    // Enable moving, title bar, close button, and resizing
-    set_container_properties_(container, true, "My Container", true, true, true);
+    // Enable moving, title bar, close button,
+    set_container_properties_(container, true, "My Container", true, true);
     
-    Parent* container2 = new_container_(app.window, 300, 100, 300, 200, COLOR_GRAY);
-
-    // Enable moving, title bar, close button, and resizing
-    set_container_properties_(container2, true, "My Container", true, true, true);
-
+	Entry* entry =  new_entry_(container, 10, 50, 200, 2048);
+	entry->place_holder = "enter text";
+ 	Button* button = new_button_(app.window, 100, 100, 150, 50, "Click Me", my_callback);
     // Create dropdown options
     char* options[] = {"Option 1", "Option 2", "Option 3", "Option 4"};
     int option_count = 4;
@@ -32,13 +33,13 @@ int main(void) {
     new_radio_button_(container, 350, 200, 20, 20, "Choice A", 2);
     new_radio_button_(container, 350, 230, 20, 20, "Choice B", 2);
 
-    TextBox* texty = new_textbox_(container2, 5, 5, 300, 1024);
+    TextBox* texty = new_textbox_(container, 30, 100, 300, 1024);
 
     // ---------- SLIDER DEMO ----------
     // Create a slider in container (horizontal, 100px wide, 20px high, range 0-100, starting at 50)
     Slider* slider1 = new_slider(container, 10, 500, 200, 80, 0, 100, 50, "Volume");
     // Create another slider in container2
-    Slider* slider2 = new_slider(container2, 10, 550, 200, 50, 0, 100, 75, "Brightness");
+    Slider* slider2 = new_slider(container, 10, 550, 200, 50, 0, 100, 75, "Brightness");
 
     app_run_(app.window);
 

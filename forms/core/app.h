@@ -9,6 +9,21 @@ App init(void) {
     //   app.theme = ;
     return app;
 }
+int is_any_text_widget_active(void) {
+    // Check entries
+    for (int i = 0; i < entrys_count; i++) {
+        if (entry_widgets[i] && entry_widgets[i]->is_active) {
+            return 1;
+        }
+    }
+    // Check textboxes
+    for (int i = 0; i < textboxs_count; i++) {
+        if (textbox_widgets[i] && textbox_widgets[i]->is_active) {
+            return 1;
+        }
+    }
+    return 0;
+}
 
 void app_run_(Parent* parent) {
     SDL_Event event;
@@ -21,8 +36,17 @@ void app_run_(Parent* parent) {
                 update_all_registered_containers(event);
                 update_all_registered_drops(event);
                 update_all_registered_radios(event);
+                update_all_registered_entrys(event);
                 update_all_registered_textboxs(event);
                 update_all_registered_sliders(event);  // Update sliders
+                update_all_registered_buttons(event);
+
+                // Global text input management after all updates
+                if (is_any_text_widget_active()) {
+                    SDL_StartTextInput();
+                } else {
+                    SDL_StopTextInput();
+                }
             }
         }
 
@@ -30,8 +54,10 @@ void app_run_(Parent* parent) {
         render_all_registered_containers();
         render_all_registered_drops();
         render_all_registered_radios();
+        render_all_registered_entrys();
         render_all_registered_textboxs();
         render_all_registered_sliders();  // Render sliders
+        render_all_registered_buttons();
         present_(&parent->base);
     }
 
