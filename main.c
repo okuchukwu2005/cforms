@@ -17,7 +17,7 @@ int main(void) {
     // Create dropdown options
     char* options[] = {"Option 1", "Option 2", "Option 3", "Option 4"};
     int option_count = 4;
-    Drop* dropdown = new_drop_down_(container, 300, 400, 310, 60, options, option_count);
+    Drop* dropdown = new_drop_down_(container, 500, 40, 170, 30, options, option_count);
     
     // ---------- RADIO BUTTON DEMO ----------
     // Group 1 (only one of these three can be selected at a time)
