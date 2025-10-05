@@ -1,9 +1,16 @@
+/**
+ * @file button.h
+ * @brief Contains logic for button widgets using SDL2
+ */
+
+#ifndef BUTTON_H
+#define BUTTON_H
+
 #include <stdlib.h> // for malloc
 #include <string.h> // for strdup
 #include <SDL2/SDL.h> // for SDL_Event, etc.
 #include <SDL2/SDL_ttf.h> // for TTF_SizeText usage
-#include "graphics.h" // for draw functions
-#include "color.h" // for Color
+
 
 typedef struct {
     Parent* parent;            // Pointer to the parent window or container
@@ -58,58 +65,31 @@ void render_button(Button* button) {
     // Calculate absolute position relative to parent
     int abs_x = button->x + button->parent->x;
     int abs_y = button->y + button->parent->y;
-    const int corner_radius = 10; // Radius for rounded corners
 
-    // Determine background color based on state
-    Color bg_color = COLOR_BLUE; // Default blue background
+    // Determine button color based on state
+    Color button_color = {200, 200, 200, 255}; // Normal gray
     if (button->is_pressed) {
-        bg_color = COLOR_NAVY; // Darker blue when pressed
+        button_color = (Color){150, 150, 150, 255}; // Darker when pressed
     } else if (button->is_hovered) {
-        bg_color = COLOR_CYAN; // Lighter blue when hovered
+        button_color = (Color){220, 220, 220, 255}; // Lighter when hovered
     }
 
-    // Draw rounded rectangle (approximated with circles and rectangles)
-    // Draw four corner circles
-    draw_circle_(&button->parent->base, abs_x + corner_radius, abs_y + corner_radius, corner_radius, bg_color);
-    draw_circle_(&button->parent->base, abs_x + button->w - corner_radius, abs_y + corner_radius, corner_radius, bg_color);
-    draw_circle_(&button->parent->base, abs_x + corner_radius, abs_y + button->h - corner_radius, corner_radius, bg_color);
-    draw_circle_(&button->parent->base, abs_x + button->w - corner_radius, abs_y + button->h - corner_radius, corner_radius, bg_color);
+    // Draw rounded rectangle
+    draw_rounded_rect_(&(button->parent->base), abs_x, abs_y, button->w, button->h, 0.2f, button_color);
 
-    // Draw rectangles to fill the body
-    draw_rect_(&button->parent->base, abs_x + corner_radius, abs_y, button->w - 2 * corner_radius, button->h, bg_color); // Middle
-    draw_rect_(&button->parent->base, abs_x, abs_y + corner_radius, corner_radius, button->h - 2 * corner_radius, bg_color); // Left
-    draw_rect_(&button->parent->base, abs_x + button->w - corner_radius, abs_y + corner_radius, corner_radius, button->h - 2 * corner_radius, bg_color); // Right
-
-    // Draw border (approximated as a slightly larger rounded rectangle outline)
-    Color border_color = COLOR_BLACK;
-    draw_circle_(&button->parent->base, abs_x + corner_radius, abs_y + corner_radius, corner_radius, border_color);
-    draw_circle_(&button->parent->base, abs_x + button->w - corner_radius, abs_y + corner_radius, corner_radius, border_color);
-    draw_circle_(&button->parent->base, abs_x + corner_radius, abs_y + button->h - corner_radius, corner_radius, border_color);
-    draw_circle_(&button->parent->base, abs_x + button->w - corner_radius, abs_y + button->h - corner_radius, corner_radius, border_color);
-    draw_rect_(&button->parent->base, abs_x + corner_radius, abs_y, button->w - 2 * corner_radius, 1, border_color); // Top
-    draw_rect_(&button->parent->base, abs_x + corner_radius, abs_y + button->h - 1, button->w - 2 * corner_radius, 1, border_color); // Bottom
-    draw_rect_(&button->parent->base, abs_x, abs_y + corner_radius, 1, button->h - 2 * corner_radius, border_color); // Left
-    draw_rect_(&button->parent->base, abs_x + button->w - 1, abs_y + corner_radius, 1, button->h - 2 * corner_radius, border_color); // Right
-
-    // Draw inner fill to smooth out border
-    draw_rect_(&button->parent->base, abs_x + corner_radius, abs_y + 1, button->w - 2 * corner_radius, button->h - 2, bg_color);
-    draw_rect_(&button->parent->base, abs_x + 1, abs_y + corner_radius, corner_radius - 1, button->h - 2 * corner_radius, bg_color);
-    draw_rect_(&button->parent->base, abs_x + button->w - corner_radius, abs_y + corner_radius, corner_radius - 1, button->h - 2 * corner_radius, bg_color);
-
-    TTF_Font* font = TTF_OpenFont(FONT_FILE, 30);
-    if (!font) {
-        printf("Failed to load font: %s\n", TTF_GetError());
-        return;
+    // Draw text centered
+    if (button->label) {
+        int font_size = 16; // Hardcoded font size
+        TTF_Font* font = TTF_OpenFont(FONT_FILE, font_size);
+        if (font) {
+            int text_w, text_h;
+            TTF_SizeText(font, button->label, &text_w, &text_h);
+            int text_x = abs_x + (button->w - text_w) / 2;
+            int text_y = abs_y + (button->h - text_h) / 2;
+            draw_text_from_font_(&(button->parent->base), font, button->label, text_x, text_y, (Color){0, 0, 0, 255}, ALIGN_LEFT);
+            TTF_CloseFont(font);
+        }
     }
-
-    // Render label centered with white text
-    int text_w, text_h;
-    TTF_SizeText(font, button->label, &text_w, &text_h);
-    int text_x = abs_x + (button->w / 2);
-    int text_y = abs_y + (button->h - text_h) / 2;
-    draw_text_from_font_(&button->parent->base, font, button->label, text_x, text_y, COLOR_WHITE, ALIGN_CENTER);
-
-    TTF_CloseFont(font);
 }
 
 void update_button(Button* button, SDL_Event event) {
@@ -180,3 +160,5 @@ void update_all_registered_buttons(SDL_Event event) {
         }
     }
 }
+
+#endif // BUTTON_H

@@ -58,6 +58,7 @@ void app_run_(Parent* parent) {
         render_all_registered_textboxs();
         render_all_registered_sliders();  // Render sliders
         render_all_registered_buttons();
+
         present_(&parent->base);
     }
 

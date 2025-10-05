@@ -9,6 +9,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
+#include <math.h>
 #include "color.h"   // Access Color struct
 
 /**
@@ -130,6 +131,107 @@ static inline void draw_triangle_(Base* base, int x1, int y1, int x2, int y2, in
             x_end = temp;
         }
         SDL_RenderDrawLine(base->sdl_renderer, x_start, y, x_end, y);
+    }
+}
+
+/**
+ * @brief Draws a filled rounded rectangle (similar to raylib's DrawRectangleRounded)
+ * @param base Pointer to the Base struct containing the renderer
+ * @param x X-coordinate of the top-left corner
+ * @param y Y-coordinate of the top-left corner
+ * @param w Width of the rectangle
+ * @param h Height of the rectangle
+ * @param roundness Rounding factor (0.0f = rectangle, 1.0f = full rounded)
+ * @param color The fill color of the rounded rectangle
+ */
+static inline void draw_rounded_rect_(Base* base, int x, int y, int w, int h, float roundness, Color color) {
+    SDL_SetRenderDrawColor(base->sdl_renderer, color.r, color.g, color.b, color.a);
+
+    if (w <= 0 || h <= 0) {
+        return;
+    }
+
+    if (roundness <= 0.0f) {
+        SDL_Rect rect = {x, y, w, h};
+        SDL_RenderFillRect(base->sdl_renderer, &rect);
+        return;
+    }
+
+    float min_dim = (w < h) ? w : h;
+    int radius = (int)(roundness * min_dim / 2.0f);
+    if (radius <= 0) {
+        SDL_Rect rect = {x, y, w, h};
+        SDL_RenderFillRect(base->sdl_renderer, &rect);
+        return;
+    }
+
+    // Clamp radius to avoid over-rounding
+    if (2 * radius > w) radius = w / 2;
+    if (2 * radius > h) radius = h / 2;
+
+    int radius_sq = radius * radius;
+
+    for (int dy = 0; dy < h; ++dy) {
+        for (int dx = 0; dx < w; ++dx) {
+            bool inside = false;
+
+            // Inner rectangle
+            if (dx >= radius && dy >= radius && dx < w - radius && dy < h - radius) {
+                inside = true;
+            }
+            // Left strip
+            else if (dx < radius && dy >= radius && dy < h - radius) {
+                inside = true;
+            }
+            // Right strip
+            else if (dx >= w - radius && dy >= radius && dy < h - radius) {
+                inside = true;
+            }
+            // Top strip
+            else if (dy < radius && dx >= radius && dx < w - radius) {
+                inside = true;
+            }
+            // Bottom strip
+            else if (dy >= h - radius && dx >= radius && dx < w - radius) {
+                inside = true;
+            }
+            // Top-left corner
+            else if (dx < radius && dy < radius) {
+                int dx_corner = dx - radius;
+                int dy_corner = dy - radius;
+                if (dx_corner * dx_corner + dy_corner * dy_corner <= radius_sq) {
+                    inside = true;
+                }
+            }
+            // Top-right corner
+            else if (dx >= w - radius && dy < radius) {
+                int dx_corner = dx - (w - radius);
+                int dy_corner = dy - radius;
+                if (dx_corner * dx_corner + dy_corner * dy_corner <= radius_sq) {
+                    inside = true;
+                }
+            }
+            // Bottom-left corner
+            else if (dx < radius && dy >= h - radius) {
+                int dx_corner = dx - radius;
+                int dy_corner = dy - (h - radius);
+                if (dx_corner * dx_corner + dy_corner * dy_corner <= radius_sq) {
+                    inside = true;
+                }
+            }
+            // Bottom-right corner
+            else if (dx >= w - radius && dy >= h - radius) {
+                int dx_corner = dx - (w - radius);
+                int dy_corner = dy - (h - radius);
+                if (dx_corner * dx_corner + dy_corner * dy_corner <= radius_sq) {
+                    inside = true;
+                }
+            }
+
+            if (inside) {
+                SDL_RenderDrawPoint(base->sdl_renderer, x + dx, y + dy);
+            }
+        }
     }
 }
 
