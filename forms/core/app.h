@@ -40,6 +40,7 @@ void app_run_(Parent* parent) {
                 update_all_registered_textboxs(event);
                 update_all_registered_sliders(event);  // Update sliders
                 update_all_registered_buttons(event);
+                update_all_registered_texts(event);
 
                 // Global text input management after all updates
                 if (is_any_text_widget_active()) {
@@ -58,7 +59,7 @@ void app_run_(Parent* parent) {
         render_all_registered_textboxs();
         render_all_registered_sliders();  // Render sliders
         render_all_registered_buttons();
-
+		render_all_registered_texts();
         present_(&parent->base);
     }
 

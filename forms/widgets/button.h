@@ -11,6 +11,10 @@
 #include <SDL2/SDL.h> // for SDL_Event, etc.
 #include <SDL2/SDL_ttf.h> // for TTF_SizeText usage
 
+void OVERRIDE(void) {
+    printf("Button was clicked!\n");
+    // Add custom logic, e.g., open a dialog, submit a form, etc.
+}
 
 typedef struct {
     Parent* parent;            // Pointer to the parent window or container

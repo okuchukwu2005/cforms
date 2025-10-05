@@ -9,4 +9,5 @@
 #include"widgets/textbox.h"
 #include"widgets/slider.h"
 #include"widgets/button.h"
+#include"widgets/text.h"
 #include"core/app.h"

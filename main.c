@@ -2,10 +2,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "forms/form.h"
-void my_callback(void) {
-    printf("Button was clicked!\n");
-    // Add custom logic, e.g., open a dialog, submit a form, etc.
-}
 int main(void) {
     App app = init();
     app.window = new_window_("My Window", 1000, 700);
@@ -17,7 +13,7 @@ int main(void) {
     
 	Entry* entry =  new_entry_(container, 10, 50, 200, 2048);
 	entry->place_holder = "enter text";
- 	Button* button = new_button_(app.window, 100, 100, 150, 50, "Click Me", my_callback);
+ 	Button* button = new_button_(app.window, 100, 100, 150, 50, "Click Me", OVERRIDE);
     // Create dropdown options
     char* options[] = {"Option 1", "Option 2", "Option 3", "Option 4"};
     int option_count = 4;
@@ -40,6 +36,10 @@ int main(void) {
     Slider* slider1 = new_slider(container, 10, 500, 200, 80, 0, 100, 50, "Volume");
     // Create another slider in container2
     Slider* slider2 = new_slider(container, 10, 550, 200, 50, 0, 100, 75, "Brightness");
+
+	const char* content = "haha hi, youve been on my mind";
+    Text* text = new_text_(app.window, 0,0, content, 14, COLOR_BLACK, ALIGN_LEFT);
+    
 
     app_run_(app.window);
 
