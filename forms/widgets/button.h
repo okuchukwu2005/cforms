@@ -11,9 +11,31 @@
 #include <SDL2/SDL.h> // for SDL_Event, etc.
 #include <SDL2/SDL_ttf.h> // for TTF_SizeText usage
 
+
 void OVERRIDE(void) {
     printf("Button was clicked!\n");
     // Add custom logic, e.g., open a dialog, submit a form, etc.
+}
+
+// Helper to darken a color (add similar for lighten if needed)
+static inline Color darken_color(Color c, float factor) {
+    Color darkened = {
+        .r = (uint8_t)(c.r * (1.0f - factor)),
+        .g = (uint8_t)(c.g * (1.0f - factor)),
+        .b = (uint8_t)(c.b * (1.0f - factor)),
+        .a = c.a
+    };
+    return darkened;
+}
+
+static inline Color lighten_color(Color c, float factor) {
+    Color lightened = {
+        .r = (uint8_t)(c.r + (255 - c.r) * factor),
+        .g = (uint8_t)(c.g + (255 - c.g) * factor),
+        .b = (uint8_t)(c.b + (255 - c.b) * factor),
+        .a = c.a
+    };
+    return lightened;
 }
 
 typedef struct {
@@ -24,6 +46,8 @@ typedef struct {
     void (*callback)(void);    // Callback function on click
     int is_hovered;            // Is the mouse hovering over the button?
     int is_pressed;            // Is the button pressed?
+    Color* custom_bg_color;    // Optional override for bg color (NULL = use theme)
+    Color* custom_text_color;  // Optional override for text color (NULL = use theme)
 } Button;
 
 void register_widget_button(Button* button);
@@ -54,10 +78,32 @@ Button* new_button_(Parent* parent, int x, int y, int w, int h, const char* labe
     new_button->callback = callback;
     new_button->is_hovered = 0;
     new_button->is_pressed = 0;
+    new_button->custom_bg_color = NULL;
+    new_button->custom_text_color = NULL;
 
     // Register widget
     register_widget_button(new_button);
     return new_button;
+}
+
+// Setter for bg color override
+void set_button_bg_color(Button* button, Color color) {
+    if (button) {
+        if (!button->custom_bg_color) {
+            button->custom_bg_color = (Color*)malloc(sizeof(Color));
+        }
+        *button->custom_bg_color = color;
+    }
+}
+
+// Setter for text color override
+void set_button_text_color(Button* button, Color color) {
+    if (button) {
+        if (!button->custom_text_color) {
+            button->custom_text_color = (Color*)malloc(sizeof(Color));
+        }
+        *button->custom_text_color = color;
+    }
 }
 
 void render_button(Button* button) {
@@ -66,31 +112,38 @@ void render_button(Button* button) {
         return;
     }
 
+    // Fallback if no theme set
+    if (!current_theme) {
+        // Use hardcoded defaults (your original colors)
+        current_theme = (Theme*)&THEME_LIGHT;  // Or set a static fallback
+    }
+
     // Calculate absolute position relative to parent
     int abs_x = button->x + button->parent->x;
     int abs_y = button->y + button->parent->y;
 
-    // Determine button color based on state
-    Color button_color = {200, 200, 200, 255}; // Normal gray
+    // Determine bg color: custom > theme state variants
+    Color button_color = button->custom_bg_color ? *button->custom_bg_color : current_theme->button_normal;
     if (button->is_pressed) {
-        button_color = (Color){150, 150, 150, 255}; // Darker when pressed
+        button_color = button->custom_bg_color ? darken_color(*button->custom_bg_color, 0.2f) : current_theme->button_pressed;
     } else if (button->is_hovered) {
-        button_color = (Color){220, 220, 220, 255}; // Lighter when hovered
+        button_color = button->custom_bg_color ? lighten_color(*button->custom_bg_color, 0.1f) : current_theme->button_hovered;
     }
 
-    // Draw rounded rectangle
-    draw_rounded_rect_(&(button->parent->base), abs_x, abs_y, button->w, button->h, 0.2f, button_color);
+    // Draw rounded rectangle (use theme roundness)
+    draw_rounded_rect_(&(button->parent->base), abs_x, abs_y, button->w, button->h, current_theme->roundness, button_color);
 
     // Draw text centered
     if (button->label) {
-        int font_size = 16; // Hardcoded font size
-        TTF_Font* font = TTF_OpenFont(FONT_FILE, font_size);
+        int font_size = current_theme->default_font_size;  // From theme
+        TTF_Font* font = TTF_OpenFont(current_theme->font_file, font_size);
         if (font) {
             int text_w, text_h;
             TTF_SizeText(font, button->label, &text_w, &text_h);
             int text_x = abs_x + (button->w - text_w) / 2;
             int text_y = abs_y + (button->h - text_h) / 2;
-            draw_text_from_font_(&(button->parent->base), font, button->label, text_x, text_y, (Color){0, 0, 0, 255}, ALIGN_LEFT);
+            Color text_color = button->custom_text_color ? *button->custom_text_color : current_theme->button_text;
+            draw_text_from_font_(&(button->parent->base), font, button->label, text_x, text_y, text_color, ALIGN_LEFT);
             TTF_CloseFont(font);
         }
     }
@@ -132,6 +185,8 @@ void update_button(Button* button, SDL_Event event) {
 void free_button(Button* button) {
     if (button) {
         free(button->label);
+        if (button->custom_bg_color) free(button->custom_bg_color);
+        if (button->custom_text_color) free(button->custom_text_color);
         free(button);
     }
 }

@@ -5,10 +5,18 @@ typedef struct {
 
 App init(void) {
     App app = {0}; // Initialize struct members to zero
-    // Initialize fonts or other resources here if needed
-    //   app.theme = ;
+    
+    // Set default theme (e.g., light mode)
+    set_theme(&THEME_LIGHT);
+    
+    // Initialize other global resources if needed
+    // For example: Load global fonts, set SDL hints, or init other subsystems
+    // SDL_Init(SDL_INIT_EVERYTHING);  // If not already in new_window_
+    // TTF_Init();  // If not already handled
+    
     return app;
 }
+
 int is_any_text_widget_active(void) {
     // Check entries
     for (int i = 0; i < entrys_count; i++) {
@@ -33,6 +41,26 @@ void app_run_(Parent* parent) {
             if (event.type == SDL_QUIT) {
                 running = 0;
             } else {
+                // New: Handle theme switching on key press
+                if (event.type == SDL_KEYDOWN) {
+                    switch (event.key.keysym.sym) {
+                        case SDLK_l:  // 'L' for Light
+                            set_theme(&THEME_LIGHT);
+                            printf("Switched to Light theme\n");
+                            break;
+                        case SDLK_d:  // 'D' for Dark
+                            set_theme(&THEME_DARK);
+                            printf("Switched to Dark theme\n");
+                            break;
+                        case SDLK_h:  // 'H' for Hacker
+                            set_theme(&THEME_HACKER);
+                            printf("Switched to Hacker theme\n");
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
                 update_all_registered_containers(event);
                 update_all_registered_drops(event);
                 update_all_registered_radios(event);
@@ -51,7 +79,7 @@ void app_run_(Parent* parent) {
             }
         }
 
-        clear_screen_(&parent->base, COLOR_GREEN);
+        clear_screen_(&parent->base, COLOR_GREEN);  // TODO: Use current_theme->bg_primary here for themed bg?
         render_all_registered_containers();
         render_all_registered_drops();
         render_all_registered_radios();

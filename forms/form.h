@@ -2,6 +2,7 @@
 #include <SDL2/SDL_ttf.h>
 #include"core/api.h"
 #include"core/graphics.h"
+#include"core/theme.h"
 #include"widgets/container.h"
 #include"widgets/entry.h"
 #include"widgets/drop.h"
