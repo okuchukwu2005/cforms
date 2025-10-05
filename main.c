@@ -33,9 +33,9 @@ int main(void) {
 
     // ---------- SLIDER DEMO ----------
     // Create a slider in container (horizontal, 100px wide, 20px high, range 0-100, starting at 50)
-    Slider* slider1 = new_slider(container, 10, 500, 200, 80, 0, 100, 50, "Volume");
+    Slider* slider1 = new_slider(container, 10, 500, 250, 15, 0, 100, 50, "Volume");
     // Create another slider in container2
-    Slider* slider2 = new_slider(container, 10, 550, 200, 50, 0, 100, 75, "Brightness");
+    //Slider* slider2 = new_slider(container, 10, 550, 200, 50, 0, 100, 75, "Brightness");
 
 	const char* content = "haha hi, youve been on my mind";
     Text* text = new_text_(app.window, 0,0, content, 14, COLOR_BLACK, ALIGN_LEFT);

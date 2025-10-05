@@ -17,26 +17,7 @@ void OVERRIDE(void) {
     // Add custom logic, e.g., open a dialog, submit a form, etc.
 }
 
-// Helper to darken a color (add similar for lighten if needed)
-static inline Color darken_color(Color c, float factor) {
-    Color darkened = {
-        .r = (uint8_t)(c.r * (1.0f - factor)),
-        .g = (uint8_t)(c.g * (1.0f - factor)),
-        .b = (uint8_t)(c.b * (1.0f - factor)),
-        .a = c.a
-    };
-    return darkened;
-}
 
-static inline Color lighten_color(Color c, float factor) {
-    Color lightened = {
-        .r = (uint8_t)(c.r + (255 - c.r) * factor),
-        .g = (uint8_t)(c.g + (255 - c.g) * factor),
-        .b = (uint8_t)(c.b + (255 - c.b) * factor),
-        .a = c.a
-    };
-    return lightened;
-}
 
 typedef struct {
     Parent* parent;            // Pointer to the parent window or container
