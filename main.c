@@ -6,39 +6,41 @@ int main(void) {
     App app = init();
     app.window = new_window_("My Window", 1000, 700);
     
-    Parent* container = new_container_(app.window, 10, 10, 320, 600, COLOR_GRAY);
+    Parent* container = new_container_(app.window, 10, 10, 400, 650, COLOR_DARK_GRAY);
 
     // Enable moving, title bar, close button,
     set_container_properties_(container, true, "My Container", true, true);
-    
-	Entry* entry =  new_entry_(container, 10, 50, 200, 2048);
-	entry->place_holder = "enter text";
- 	Button* button = new_button_(app.window, 100, 100, 150, 50, "Click Me", OVERRIDE);
-    // Create dropdown options
-    char* options[] = {"Option 1", "Option 2", "Option 3", "Option 4"};
-    int option_count = 4;
-    Drop* dropdown = new_drop_down_(container, 500, 40, 170, 30, options, option_count);
-    
-    // ---------- RADIO BUTTON DEMO ----------
+
+    	const char* content = "This is a Demo of c forms";
+    Text* text = new_text_(container, 5,40, content, 14, COLOR_WHITE, ALIGN_LEFT);
+        // ---------- RADIO BUTTON DEMO ----------
     // Group 1 (only one of these three can be selected at a time)
-    new_radio_button_(container, 150, 200, 20, 20, "Option 1", 1);
-    new_radio_button_(container, 150, 230, 20, 20, "Option 2", 1);
-    new_radio_button_(container, 150, 260, 20, 20, "Option 3", 1);
+    new_radio_button_(container, 15, 100, 20, 20, "Option 1", 1);
+    new_radio_button_(container, 15, 130, 20, 20, "Option 2", 1);
+    new_radio_button_(container, 15, 160, 20, 20, "Option 3", 1);
 
     // Group 2 (independent from group 1)
-    new_radio_button_(container, 350, 200, 20, 20, "Choice A", 2);
-    new_radio_button_(container, 350, 230, 20, 20, "Choice B", 2);
+    new_radio_button_(container, 200, 100, 20, 20, "Choice A", 2);
+    new_radio_button_(container, 200, 130, 20, 20, "Choice B", 2);
 
-    TextBox* texty = new_textbox_(container, 30, 100, 300, 1024);
-
-    // ---------- SLIDER DEMO ----------
+       // Create dropdown options
+         char* options[] = {"Option 1", "Option 2", "Option 3", "Option 4"};
+         int option_count = 4;
+         Drop* dropdown = new_drop_down_(container, 15, 200, 170, 30, options, option_count);
+         
+// ---------- SLIDER DEMO ----------
     // Create a slider in container (horizontal, 100px wide, 20px high, range 0-100, starting at 50)
-    Slider* slider1 = new_slider(container, 10, 500, 250, 15, 0, 100, 50, "Volume");
-    // Create another slider in container2
-    //Slider* slider2 = new_slider(container, 10, 550, 200, 50, 0, 100, 75, "Brightness");
+    Slider* slider1 = new_slider(container, 10, 370, 250, 15, 0, 100, 50, "Volume");
 
-	const char* content = "haha hi, youve been on my mind";
-    Text* text = new_text_(app.window, 0,0, content, 14, COLOR_BLACK, ALIGN_LEFT);
+ 	// Entry* entry =  new_entry_(container, 10, 200, 300, 2048);
+ 	// entry->place_holder = "enter text";
+//  	Button* button = new_button_(container, 100, 100, 120, 40, "Click Me", OVERRIDE);
+
+// 
+//     TextBox* texty = new_textbox_(container, 30, 100, 300, 1024);
+// 
+ 
+
     
 
     app_run_(app.window);

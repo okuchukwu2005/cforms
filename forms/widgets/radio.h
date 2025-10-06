@@ -1,14 +1,28 @@
+/**
+ * @file radio.h
+ * @brief Contains logic for radio button widgets using SDL2
+ */
+
 #ifndef RADIO_H
 #define RADIO_H
+
+#include <stdlib.h> // for malloc
+#include <string.h> // for strdup
+#include <SDL2/SDL.h> // for SDL_Event, etc.
 
 
 typedef struct {
     Parent* parent;      // Parent container or window
-    int x, y;            // Position
+    int x, y;            // Position (relative to parent)
     int w, h;            // Size
     char* label;         // Label text
     bool selected;       // Is selected?
     int group_id;        // Group ID (1 group → only 1 selected)
+    bool is_hovered;     // For potential hover effects
+    // Theme overrides (NULL = use theme)
+    Color* custom_outer_color;   // Outer circle color
+    Color* custom_inner_color;   // Inner circle color when selected
+    Color* custom_label_color;   // Label text color
 } Radio;
 
 #define MAX_RADIOS 100
@@ -25,6 +39,11 @@ static inline void register_widget_radio(Radio* radio) {
 // -------- Create --------
 static inline Radio* new_radio_button_(Parent* parent, int x, int y, int w, int h,
                                        const char* label, int group_id) {
+    if (!parent || !parent->base.sdl_renderer) {
+        printf("Invalid parent or renderer\n");
+        return NULL;
+    }
+
     Radio* radio = (Radio*)malloc(sizeof(Radio));
     if (!radio) {
         printf("Failed to allocate Radio\n");
@@ -37,46 +56,122 @@ static inline Radio* new_radio_button_(Parent* parent, int x, int y, int w, int 
     radio->w = w;
     radio->h = h;
     radio->label = strdup(label);
+    if (!radio->label) {
+        free(radio);
+        printf("Failed to allocate memory for label\n");
+        return NULL;
+    }
     radio->selected = false;
     radio->group_id = group_id;
+    radio->is_hovered = false;
+    // Init overrides to NULL (use theme)
+    radio->custom_outer_color = NULL;
+    radio->custom_inner_color = NULL;
+    radio->custom_label_color = NULL;
 
     register_widget_radio(radio);
     return radio;
 }
 
+// Setters for overrides
+static inline void set_radio_outer_color(Radio* radio, Color color) {
+    if (radio) {
+        if (!radio->custom_outer_color) {
+            radio->custom_outer_color = (Color*)malloc(sizeof(Color));
+        }
+        *radio->custom_outer_color = color;
+    }
+}
+
+static inline void set_radio_inner_color(Radio* radio, Color color) {
+    if (radio) {
+        if (!radio->custom_inner_color) {
+            radio->custom_inner_color = (Color*)malloc(sizeof(Color));
+        }
+        *radio->custom_inner_color = color;
+    }
+}
+
+static inline void set_radio_label_color(Radio* radio, Color color) {
+    if (radio) {
+        if (!radio->custom_label_color) {
+            radio->custom_label_color = (Color*)malloc(sizeof(Color));
+        }
+        *radio->custom_label_color = color;
+    }
+}
+
 // -------- Render --------
 static inline void render_radio_(Radio* radio) {
+    if (!radio || !radio->parent || !radio->parent->base.sdl_renderer || !radio->parent->is_open) {
+        printf("Invalid radio, renderer, or parent is not open\n");
+        return;
+    }
+
+    // Fallback if no theme set
+    if (!current_theme) {
+        current_theme = (Theme*)&THEME_LIGHT;  // Or set a static fallback
+    }
+
+    // Calculate absolute position relative to parent
+    int abs_x = radio->x + radio->parent->x;
+    int abs_y = radio->y + radio->parent->y;
+
     Base* base = &radio->parent->base;
 
+    // Get colors from theme/overrides
+    Color outer_color = radio->custom_outer_color ? *radio->custom_outer_color : current_theme->bg_secondary;
+    if (radio->is_hovered) {
+        outer_color = radio->custom_outer_color ? lighten_color(*radio->custom_outer_color, 0.1f) : current_theme->button_hovered;
+    }
+    Color inner_color = radio->custom_inner_color ? *radio->custom_inner_color : current_theme->accent;
+    Color label_color = radio->custom_label_color ? *radio->custom_label_color : current_theme->text_primary;
+    int font_size = current_theme->default_font_size;  // From theme
+
     // Outer circle
-    draw_circle_(base, radio->x, radio->y, radio->h / 2,
-                 (Color){200, 200, 200, 255});
+    draw_circle_(base, abs_x, abs_y, radio->h / 2, outer_color);
 
     // Inner circle if selected
     if (radio->selected) {
-        draw_circle_(base, radio->x, radio->y, (radio->h / 2) - 4,
-                     (Color){50, 150, 255, 255});
+        draw_circle_(base, abs_x, abs_y, (radio->h / 2) - 4, inner_color);
     }
 
     // Label text
-    draw_text_(base, radio->label, 16,
-               radio->x + radio->h, radio->y - (radio->h / 3),
-               (Color){255, 255, 255, 255});
+    draw_text_(base, radio->label, font_size,
+               abs_x + radio->h, abs_y - (radio->h / 3),
+               label_color);
 }
 
 // -------- Update --------
 static inline void update_radio_(Radio* radio, SDL_Event event) {
-    if (event.type == SDL_MOUSEBUTTONDOWN) {
+    if (!radio || !radio->parent || !radio->parent->is_open) {
+        printf("Invalid radio, parent, or parent is not open\n");
+        return;
+    }
+
+    // Calculate absolute position relative to parent
+    int abs_x = radio->x + radio->parent->x;
+    int abs_y = radio->y + radio->parent->y;
+
+    int mouse_x, mouse_y;
+    SDL_GetMouseState(&mouse_x, &mouse_y);
+
+    // Check hover
+    bool over = (mouse_x >= abs_x - radio->h/2 && mouse_x <= abs_x + radio->h/2 &&
+                 mouse_y >= abs_y - radio->h/2 && mouse_y <= abs_y + radio->h/2);
+    radio->is_hovered = over;
+
+    if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
         int mx = event.button.x;
         int my = event.button.y;
 
         // Hitbox: circle bounding box
-        if (mx >= radio->x - radio->h/2 && mx <= radio->x + radio->h/2 &&
-            my >= radio->y - radio->h/2 && my <= radio->y + radio->h/2) {
+        if (mx >= abs_x - radio->h/2 && mx <= abs_x + radio->h/2 &&
+            my >= abs_y - radio->h/2 && my <= abs_y + radio->h/2) {
 
             // Deselect others in same group
             for (int i = 0; i < radios_count; i++) {
-                if (radio_widgets[i]->group_id == radio->group_id) {
+                if (radio_widgets[i] && radio_widgets[i]->group_id == radio->group_id) {
                     radio_widgets[i]->selected = false;
                 }
             }
@@ -85,16 +180,31 @@ static inline void update_radio_(Radio* radio, SDL_Event event) {
     }
 }
 
+// -------- Free --------
+static inline void free_radio_(Radio* radio) {
+    if (radio) {
+        free(radio->label);
+        if (radio->custom_outer_color) free(radio->custom_outer_color);
+        if (radio->custom_inner_color) free(radio->custom_inner_color);
+        if (radio->custom_label_color) free(radio->custom_label_color);
+        free(radio);
+    }
+}
+
 // -------- Helpers for all radios --------
 static inline void render_all_registered_radios(void) {
     for (int i = 0; i < radios_count; i++) {
-        render_radio_(radio_widgets[i]);
+        if (radio_widgets[i]) {
+            render_radio_(radio_widgets[i]);
+        }
     }
 }
 
 static inline void update_all_registered_radios(SDL_Event event) {
     for (int i = 0; i < radios_count; i++) {
-        update_radio_(radio_widgets[i], event);
+        if (radio_widgets[i]) {
+            update_radio_(radio_widgets[i], event);
+        }
     }
 }
 

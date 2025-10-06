@@ -62,13 +62,13 @@ void app_run_(Parent* parent) {
                 }
 
                 update_all_registered_containers(event);
-                update_all_registered_drops(event);
                 update_all_registered_radios(event);
                 update_all_registered_entrys(event);
                 update_all_registered_textboxs(event);
                 update_all_registered_sliders(event);  // Update sliders
                 update_all_registered_buttons(event);
                 update_all_registered_texts(event);
+                update_all_registered_drops(event);
 
                 // Global text input management after all updates
                 if (is_any_text_widget_active()) {
