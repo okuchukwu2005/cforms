@@ -31,6 +31,10 @@ typedef struct {
     Color button_pressed;   // Button pressed background
     Color button_text;      // Button text color
 
+    // Container-specific colors
+    Color container_bg;     // Background for containers
+    Color container_title_bg; // Background for container title bars
+
     // Metrics and styles
     int default_font_size;  // Default font size in points
     char* font_file;        // Path to the default font file
@@ -59,6 +63,8 @@ static const Theme THEME_LIGHT = {
     .button_hovered = {220, 220, 220, 255},  // Lighter gray
     .button_pressed = {180, 180, 180, 255},  // Darker gray
     .button_text = {0, 0, 0, 255},           // Black
+    .container_bg = {250, 250, 250, 255},    // Slightly whiter for contrast
+    .container_title_bg = {220, 220, 220, 255}, // Lighter gray for title bar
     .default_font_size = 16,
     .font_file = "FreeMono.ttf",
     .padding = 10,
@@ -80,6 +86,8 @@ static const Theme THEME_DARK = {
     .button_hovered = {80, 80, 80, 255},     // Lighter dark gray
     .button_pressed = {40, 40, 40, 255},     // Darker dark gray
     .button_text = {255, 255, 255, 255},     // White
+    .container_bg = {35, 35, 35, 255},       // Slightly darker for contrast
+    .container_title_bg = {50, 50, 50, 255}, // Lighter dark gray for title bar
     .default_font_size = 16,
     .font_file = "FreeMono.ttf",
     .padding = 10,
@@ -101,6 +109,8 @@ static const Theme THEME_HACKER = {
     .button_hovered = {0, 100, 0, 255},      // Medium green
     .button_pressed = {0, 30, 0, 255},       // Darker green
     .button_text = {0, 255, 0, 255},         // Green
+    .container_bg = {10, 10, 10, 255},       // Even darker gray for contrast
+    .container_title_bg = {30, 30, 30, 255}, // Lighter dark for title bar
     .default_font_size = 16,
     .font_file = "FreeMono.ttf",
     .padding = 10,

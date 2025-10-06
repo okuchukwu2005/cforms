@@ -9,12 +9,12 @@
 #include <stdlib.h> // for malloc
 #include <string.h> // for strdup
 #include <SDL2/SDL.h> // for SDL_Event, etc.
-
+#include <math.h>   // For roundf in scaling
 
 typedef struct {
     Parent* parent;      // Parent container or window
-    int x, y;            // Position (relative to parent)
-    int w, h;            // Size
+    int x, y;            // Position (relative to parent) (logical)
+    int w, h;            // Size (logical)
     char* label;         // Label text
     bool selected;       // Is selected?
     int group_id;        // Group ID (1 group → only 1 selected)
@@ -113,9 +113,18 @@ static inline void render_radio_(Radio* radio) {
         current_theme = (Theme*)&THEME_LIGHT;  // Or set a static fallback
     }
 
-    // Calculate absolute position relative to parent
+    float dpi = radio->parent->base.dpi_scale;
+    // Calculate absolute position relative to parent (logical), then scale
     int abs_x = radio->x + radio->parent->x;
     int abs_y = radio->y + radio->parent->y;
+    int sx = (int)roundf(abs_x * dpi);
+    int sy = (int)roundf(abs_y * dpi);
+    int sh = (int)roundf(radio->h * dpi);  // Assuming square, w ignored or = h
+    int radius = (int)roundf((radio->h / 2) * dpi);
+    int inner_margin = (int)roundf(4 * dpi);  // Scale the inner margin
+    int inner_radius = radius - inner_margin;
+    int font_size = (int)roundf(current_theme->default_font_size * dpi);  // Scaled from theme
+    int pad = (int)roundf(current_theme->padding * dpi);  // Scaled padding for label
 
     Base* base = &radio->parent->base;
 
@@ -126,19 +135,19 @@ static inline void render_radio_(Radio* radio) {
     }
     Color inner_color = radio->custom_inner_color ? *radio->custom_inner_color : current_theme->accent;
     Color label_color = radio->custom_label_color ? *radio->custom_label_color : current_theme->text_primary;
-    int font_size = current_theme->default_font_size;  // From theme
 
-    // Outer circle
-    draw_circle_(base, abs_x, abs_y, radio->h / 2, outer_color);
+    // Outer circle (centered at sx, sy)
+    draw_circle_(base, sx, sy, radius, outer_color);
 
     // Inner circle if selected
     if (radio->selected) {
-        draw_circle_(base, abs_x, abs_y, (radio->h / 2) - 4, inner_color);
+        draw_circle_(base, sx, sy, inner_radius, inner_color);
     }
 
-    // Label text
+    // Label text (to the right, vertically centered)
+    int label_y = sy - (int)roundf((radio->h / 6) * dpi);  // Adjusted for better centering (was /3)
     draw_text_(base, radio->label, font_size,
-               abs_x + radio->h, abs_y - (radio->h / 3),
+               sx + sh + pad / 2, label_y,
                label_color);
 }
 
@@ -149,14 +158,14 @@ static inline void update_radio_(Radio* radio, SDL_Event event) {
         return;
     }
 
-    // Calculate absolute position relative to parent
+    // Calculate absolute position relative to parent (logical)
     int abs_x = radio->x + radio->parent->x;
     int abs_y = radio->y + radio->parent->y;
 
     int mouse_x, mouse_y;
     SDL_GetMouseState(&mouse_x, &mouse_y);
 
-    // Check hover
+    // Check hover (bounding box around circle)
     bool over = (mouse_x >= abs_x - radio->h/2 && mouse_x <= abs_x + radio->h/2 &&
                  mouse_y >= abs_y - radio->h/2 && mouse_y <= abs_y + radio->h/2);
     radio->is_hovered = over;

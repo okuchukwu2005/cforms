@@ -4,14 +4,12 @@
 #include <SDL2/SDL.h>
 #include <stdlib.h> // for malloc
 #include <string.h> // for strdup
-
-
-
+#include <math.h>   // For roundf in scaling
 
 typedef struct {
     Parent* parent;      // Parent container or window
-    int x, y;            // Position (relative to parent)
-    int w, h;            // Width and height (assume horizontal slider, w > h)
+    int x, y;            // Position (relative to parent) (logical)
+    int w, h;            // Width and height (assume horizontal slider, w > h) (logical)
     int min, max;        // Range of values
     int value;           // Current value
     char* label;         // Optional label text
@@ -104,40 +102,47 @@ static inline void render_slider(Slider* slider) {
         current_theme = (Theme*)&THEME_LIGHT;  // Or set a static fallback
     }
 
-    // Calculate absolute position relative to parent
+    float dpi = slider->parent->base.dpi_scale;
+    // Calculate absolute position relative to parent (logical), then scale
     int abs_x = slider->x + slider->parent->x;
     int abs_y = slider->y + slider->parent->y;
+    int sx = (int)roundf(abs_x * dpi);
+    int sy = (int)roundf(abs_y * dpi);
+    int sw = (int)roundf(slider->w * dpi);
+    int sh = (int)roundf(slider->h * dpi);
+    int track_height = (int)roundf(4 * dpi);  // Scaled thin track
+    int thumb_width = (int)roundf(10 * dpi);  // Scaled fixed width for rectangular thumb
+    int label_pad = (int)roundf(10 * dpi);    // Scaled padding for label
+    int label_v_offset = (int)roundf(8 * dpi); // Scaled vertical offset for label
+    int font_size = (int)roundf(current_theme->default_font_size * dpi);  // Scaled from theme
 
     Base* base = &slider->parent->base;
 
     // Draw track (horizontal bar)
-    int track_height = 4;  // Thin track
     Color track_color = slider->custom_track_color ? *slider->custom_track_color : current_theme->bg_secondary;
-    draw_rect_(base, abs_x, abs_y + (slider->h / 2) - (track_height / 2), slider->w, track_height, track_color);
+    draw_rect_(base, sx, sy + (sh / 2) - (track_height / 2), sw, track_height, track_color);
 
     // Calculate thumb position
     float range = slider->max - slider->min;
     float pos_ratio = (slider->value - slider->min) / range;
-    int thumb_x = abs_x + (int)(pos_ratio * slider->w);
-    int thumb_width = 10;  // Fixed width for rectangular thumb
-    int thumb_height = slider->h;  // Full height
+    int thumb_x_logical = abs_x + (int)(pos_ratio * slider->w);
+    int sthumb_x = (int)roundf(thumb_x_logical * dpi);
 
     // Determine thumb color: custom > theme accent with state variants
-Color thumb_color = slider->custom_thumb_color ? *slider->custom_thumb_color : current_theme->accent;
-if (slider->dragging) {
-    thumb_color = slider->custom_thumb_color ? darken_color(*slider->custom_thumb_color, 0.2f) : current_theme->accent_pressed;
-} else if (slider->is_hovered) {
-    thumb_color = slider->custom_thumb_color ? lighten_color(*slider->custom_thumb_color, 0.1f) : current_theme->accent_hovered;
-}
+    Color thumb_color = slider->custom_thumb_color ? *slider->custom_thumb_color : current_theme->accent;
+    if (slider->dragging) {
+        thumb_color = slider->custom_thumb_color ? darken_color(*slider->custom_thumb_color, 0.2f) : current_theme->accent_pressed;
+    } else if (slider->is_hovered) {
+        thumb_color = slider->custom_thumb_color ? lighten_color(*slider->custom_thumb_color, 0.1f) : current_theme->accent_hovered;
+    }
 
     // Draw thumb as rectangle
-    draw_rect_(base, thumb_x - (thumb_width / 2), abs_y, thumb_width, thumb_height, thumb_color);
+    draw_rect_(base, sthumb_x - (thumb_width / 2), sy, thumb_width, sh, thumb_color);
 
     // Draw label if exists (positioned to the right of the slider, centered vertically)
     if (slider->label) {
-        int font_size = current_theme->default_font_size;  // From theme
         Color label_color = slider->custom_label_color ? *slider->custom_label_color : current_theme->text_secondary;
-        draw_text_(base, slider->label, font_size, abs_x + slider->w + 10, abs_y + (slider->h / 2) - 8, label_color);
+        draw_text_(base, slider->label, font_size, sx + sw + label_pad, sy + (sh / 2) - label_v_offset, label_color);
     }
 }
 
@@ -148,15 +153,15 @@ static inline void update_slider(Slider* slider, SDL_Event event) {
         return;
     }
 
-    // Calculate absolute position relative to parent
+    // Calculate absolute position relative to parent (logical)
     int abs_x = slider->x + slider->parent->x;
     int abs_y = slider->y + slider->parent->y;
 
-    // Calculate thumb position and bounds
+    // Calculate thumb position and bounds (logical)
     float range = slider->max - slider->min;
     float pos_ratio = (slider->value - slider->min) / range;
     int thumb_x = abs_x + (int)(pos_ratio * slider->w);
-    int thumb_width = 10;  // Fixed width for rectangular thumb
+    int thumb_width = 10;  // Fixed width logical for hit testing
     int thumb_height = slider->h;
     SDL_Rect thumb_rect = {thumb_x - (thumb_width / 2), abs_y, thumb_width, thumb_height};
 

@@ -7,7 +7,7 @@ App init(void) {
     App app = {0}; // Initialize struct members to zero
     
     // Set default theme (e.g., light mode)
-    set_theme(&THEME_LIGHT);
+    set_theme(&THEME_DARK);
     
     // Initialize other global resources if needed
     // For example: Load global fonts, set SDL hints, or init other subsystems

@@ -10,18 +10,18 @@
 #include <string.h> // for strdup
 #include <SDL2/SDL.h> // for SDL_Event, etc.
 #include <SDL2/SDL_ttf.h> // for TTF_SizeText if needed
-
+#include <math.h>   // For roundf in scaling
 
 typedef struct {
     Parent* parent;         // Parent window or container
-    int x, y;               // Position relative to parent
-    int w, h;               // Width and height of the dropdown button
+    int x, y;               // Position relative to parent (logical)
+    int w, h;               // Width and height of the dropdown button (logical)
     char** options;         // Array of option strings (caller-managed)
     int option_count;       // Number of options
     int selected_index;     // Index of currently selected option (-1 = none)
     bool is_expanded;       // Whether the dropdown is open
     bool is_hovered;        // Whether mouse is over the dropdown button
-    int font_size;          // Font size (overridable, defaults to theme)
+    int font_size;          // Font size (overridable, defaults to theme) (logical)
     char* place_holder;     // Placeholder text when no option is selected
     // Theme overrides (NULL = use theme)
     Color* custom_bg_color;       // Background for options
@@ -137,12 +137,18 @@ void render_drop_down_(Drop* drop) {
         current_theme = (Theme*)&THEME_LIGHT;  // Or set a static fallback
     }
 
-    // Calculate absolute position relative to parent
+    float dpi = drop->parent->base.dpi_scale;
+    // Calculate absolute position relative to parent (logical), then scale
     int abs_x = drop->x + drop->parent->x;
     int abs_y = drop->y + drop->parent->y;
+    int sx = (int)roundf(abs_x * dpi);
+    int sy = (int)roundf(abs_y * dpi);
+    int sw = (int)roundf(drop->w * dpi);
+    int sh = (int)roundf(drop->h * dpi);
+    int pad = (int)roundf(current_theme->padding * dpi);  // Use theme padding, scaled
+    int effective_font_size = (int)roundf((drop->font_size > 0 ? drop->font_size : current_theme->default_font_size) * dpi);
 
     Base* base = &drop->parent->base;
-    int effective_font_size = drop->font_size > 0 ? drop->font_size : current_theme->default_font_size;
 
     // Get colors from theme/overrides
     Color button_color = drop->custom_button_color ? *drop->custom_button_color : current_theme->button_normal;
@@ -154,18 +160,20 @@ void render_drop_down_(Drop* drop) {
     Color highlight_color = drop->custom_highlight_color ? *drop->custom_highlight_color : current_theme->accent;
 
     // Draw the main dropdown button
-    draw_rect_(base, abs_x, abs_y, drop->w, drop->h, button_color);
+    draw_rect_(base, sx, sy, sw, sh, button_color);
 
     // Draw placeholder text if no option is selected, otherwise draw selected option
     const char* display_text = (drop->selected_index >= 0 && drop->selected_index < drop->option_count)
                               ? drop->options[drop->selected_index]
                               : drop->place_holder;
-    draw_text_(base, display_text, effective_font_size, abs_x + 5, abs_y + drop->h / 4, text_color);
+    // Vertical centering: approximate as (sh - font_size) / 2, but since font_size is scaled, it's fine
+    int text_y = sy + (sh - effective_font_size) / 2;
+    draw_text_(base, display_text, effective_font_size, sx + pad, text_y, text_color);
 
     // Draw the dropdown arrow (down when collapsed, up when expanded)
-    int arrow_size = drop->h / 4;
-    int arrow_x = abs_x + drop->w - arrow_size - 5;
-    int arrow_y = abs_y + drop->h / 2 - arrow_size / 2;
+    int arrow_size = (int)roundf((drop->h / 3) * dpi);  // Slightly larger than /4 for visibility
+    int arrow_x = sx + sw - arrow_size - pad;
+    int arrow_y = sy + (sh - arrow_size) / 2;
     if (drop->is_expanded) {
         // Upward-pointing triangle
         draw_triangle_(base,
@@ -185,15 +193,17 @@ void render_drop_down_(Drop* drop) {
     // Draw options if expanded (NO bounds check anymore)
     if (drop->is_expanded) {
         for (int i = 0; i < drop->option_count; i++) {
-            int option_y = abs_y + drop->h * (i + 1);
+            int option_y_logical = abs_y + drop->h * (i + 1);
+            int soy = (int)roundf(option_y_logical * dpi);
 
             // Draw option background
             Color option_bg = (i == drop->selected_index) ? highlight_color : bg_color;
-            draw_rect_(base, abs_x, option_y, drop->w, drop->h, option_bg);
+            draw_rect_(base, sx, soy, sw, sh, option_bg);
 
             // Draw option text
+            int option_text_y = soy + (sh - effective_font_size) / 2;
             draw_text_(base, drop->options[i],
-                       effective_font_size, abs_x + 5, option_y + drop->h / 4, text_color);
+                       effective_font_size, sx + pad, option_text_y, text_color);
         }
     }
 }
@@ -204,7 +214,7 @@ void update_drop_down_(Drop* drop, SDL_Event event) {
         return;
     }
 
-    // Calculate absolute position relative to parent
+    // Calculate absolute position relative to parent (logical)
     int abs_x = drop->x + drop->parent->x;
     int abs_y = drop->y + drop->parent->y;
 

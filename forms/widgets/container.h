@@ -1,6 +1,7 @@
 #ifndef CONTAINER_H
 #define CONTAINER_H
 
+#include <math.h>  // For roundf in scaling
 
 #define MAX_CONTAINERS 100
 
@@ -14,7 +15,7 @@ static inline void register_widget_container(Parent* container) {
     }
 }
 
-static inline Parent* new_container_(Parent* root, int x, int y, int w, int h, Color color) {
+static inline Parent* new_container_(Parent* root, int x, int y, int w, int h) {
     if (!root || !root->is_window) {
         return NULL;
     }
@@ -26,13 +27,14 @@ static inline Parent* new_container_(Parent* root, int x, int y, int w, int h, C
     // Containers don’t own SDL_Window; just reuse renderer from root
     parent->base.sdl_window   = NULL;
     parent->base.sdl_renderer = root->base.sdl_renderer;
+    parent->base.dpi_scale    = root->base.dpi_scale;  // Propagate DPI scale from root
 
     parent->is_window = 0;
     parent->x = x;
     parent->y = y;
     parent->w = w;
     parent->h = h;
-    parent->color = color;
+    parent->color = (Color){0, 0, 0, 0}; // Default transparent, since color is now from theme
 
     // Defaults
     parent->moveable = 0;
@@ -70,42 +72,68 @@ static inline void set_container_properties_(Parent* container,
 static inline void draw_title_bar_(Parent* container) {
     if (!container || !container->has_title_bar) return;
 
+    // Fallback if no theme set
+    if (!current_theme) {
+        current_theme = (Theme*)&THEME_LIGHT;  // Or set a static fallback
+    }
+
+    float dpi = container->base.dpi_scale;
+    int sx = (int)roundf(container->x * dpi);
+    int sy = (int)roundf(container->y * dpi);
+    int sw = (int)roundf(container->w * dpi);
+    int sth = (int)roundf(container->title_height * dpi);
+    int pad = (int)roundf(current_theme->padding * dpi);
+    int font_size = (int)roundf(current_theme->default_font_size * dpi);
+
     draw_rect_(&container->base,
-               container->x, container->y,
-               container->w, container->title_height,
-               COLOR_BLACK);
+               sx, sy,
+               sw, sth,
+               current_theme->container_title_bg);  // Use theme-specific title bg
 
     if (container->title_bar) {
         draw_text_(&container->base,
                    container->title_bar,
-                   16,
-                   container->x + 10,
-                   container->y + 5,
-                   COLOR_WHITE);
+                   font_size,
+                   sx + pad,
+                   sy + pad / 2,  // Approximate vertical centering
+                   current_theme->text_primary);  // Use theme text color
     }
 
     if (container->closeable) {
-        Color close_color = {200, 0, 0, 255};
-        int btn_size = 20;
-        int btn_x = container->x + container->w - btn_size - 5;
-        int btn_y = container->y + 5;
-        draw_rect_(&container->base, btn_x, btn_y, btn_size, btn_size, close_color);
-        draw_text_(&container->base, "X", 14, btn_x + 5, btn_y + 2,
-                   (Color){255, 255, 255, 255});
+        // Derive button size from title height for proportionality
+        int btn_size = sth - pad;
+        int btn_x = sx + sw - btn_size - pad / 2;
+        int btn_y = sy + pad / 2;
+        // Use slightly smaller font for "X" (90% of default for better fit)
+        int close_font_size = (int)roundf(current_theme->default_font_size * 0.9f * dpi);
+        draw_text_(&container->base, "X", close_font_size, btn_x + btn_size / 4, btn_y + btn_size / 4,
+                   current_theme->text_primary);  // Use theme text color
     }
 }
 
 static inline void render_container(Parent* container) {
     if (!container || !container->is_open) return;
 
+    // Fallback if no theme set
+    if (!current_theme) {
+        current_theme = (Theme*)&THEME_LIGHT;  // Or set a static fallback
+    }
+
+    float dpi = container->base.dpi_scale;
+    int sx = (int)roundf(container->x * dpi);
+    int body_y = (int)roundf((container->y + container->title_height) * dpi);
+    int sw = (int)roundf(container->w * dpi);
+    int body_h = (int)roundf((container->h - container->title_height) * dpi);
+
     draw_title_bar_(container);
 
+    // Draw main container rect using theme container_bg
     draw_rect_(&container->base,
-               container->x,
-               container->y + container->title_height,
-               container->w,
-               container->h - container->title_height,
-               container->color);
+               sx,
+               body_y,
+               sw,
+               body_h,
+               current_theme->container_bg);
 }
 
 static inline void update_container(Parent* container, SDL_Event event) {
@@ -122,7 +150,7 @@ static inline void update_container(Parent* container, SDL_Event event) {
 
     bool in_close_button = false;
     if (container->closeable) {
-        int btn_size = 20;
+        int btn_size = 20;  // Logical (no change needed)
         int btn_x = container->x + container->w - btn_size - 5;
         int btn_y = container->y + 5;
         in_close_button = mouse_x >= btn_x && mouse_x <= btn_x + btn_size &&

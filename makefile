@@ -1,7 +1,7 @@
 CC = gcc
 FILE = main.c
 EXE = main
-SDL = -lSDL2 -lSDL2_ttf
+SDL = -lSDL2 -lSDL2_ttf -lm
 
 all: $(EXE)
 

@@ -24,6 +24,7 @@
 typedef struct {
     SDL_Window* sdl_window;
     SDL_Renderer* sdl_renderer;
+    float dpi_scale;  // DPI scale factor (e.g., 2.0 on Retina; computed after renderer creation)
 } Base;
 
 /**
@@ -53,11 +54,14 @@ typedef struct {
 /**
  * @brief Creates a new root window as a Parent struct.
  * @param title The title of the window.
- * @param w The width of the window.
- * @param h The height of the window.
+ * @param w The width of the window (logical size).
+ * @param h The height of the window (logical size).
  * @return Pointer to the created Parent, or NULL on failure.
  */
 static inline Parent* new_window_(char* title, int w, int h) {
+    // Enable DPI scaling hint for Windows
+    SDL_SetHint(SDL_HINT_WINDOWS_DPI_SCALING, "1");
+
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
         printf("SDL initialization failed: %s\n", SDL_GetError());
         return NULL;
@@ -73,7 +77,7 @@ static inline Parent* new_window_(char* title, int w, int h) {
                                            SDL_WINDOWPOS_CENTERED,
                                            SDL_WINDOWPOS_CENTERED,
                                            w, h,
-                                           SDL_WINDOW_SHOWN);
+                                           SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);  // Enable high DPI
     if (!sdl_win) {
         printf("Window creation failed: %s\n", SDL_GetError());
         TTF_Quit();
@@ -90,6 +94,11 @@ static inline Parent* new_window_(char* title, int w, int h) {
         return NULL;
     }
 
+    // Compute DPI scale (use width for uniform assumption)
+    int pw, ph;
+    SDL_GetRendererOutputSize(sdl_ren, &pw, &ph);
+    float dpi_scale = (float)pw / w;  // Assume uniform x/y scale
+
     Parent* parent = (Parent*)malloc(sizeof(Parent));
     if (!parent) {
         SDL_DestroyRenderer(sdl_ren);
@@ -102,6 +111,7 @@ static inline Parent* new_window_(char* title, int w, int h) {
     memset(parent, 0, sizeof(Parent));
     parent->base.sdl_window = sdl_win;
     parent->base.sdl_renderer = sdl_ren;
+    parent->base.dpi_scale = dpi_scale > 1.0f ? dpi_scale : 1.0f;  // Minimum 1.0
     parent->is_window = 1;
     parent->w = w;
     parent->h = h;
