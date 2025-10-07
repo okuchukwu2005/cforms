@@ -309,7 +309,7 @@ static inline void draw_text_from_font_(Base* base, TTF_Font* font, const char* 
  * @param y Y-coordinate for the top-left corner of the text
  * @param color The color of the text
  */
-static char *FONT_FILE = "FreeMono.ttf";
+static char *FONT_FILE = "forms/core/FreeMono.ttf";
 
 static inline void draw_text_(Base* base, const char* text, int font_size, int x, int y, Color color) {
     TTF_Font* font = TTF_OpenFont(FONT_FILE, font_size);

@@ -66,7 +66,7 @@ static const Theme THEME_LIGHT = {
     .container_bg = {250, 250, 250, 255},    // Slightly whiter for contrast
     .container_title_bg = {220, 220, 220, 255}, // Lighter gray for title bar
     .default_font_size = 16,
-    .font_file = "FreeMono.ttf",
+    .font_file = "forms/core/FreeMono.ttf",
     .padding = 10,
     .roundness = 0.2f
 };
@@ -89,7 +89,7 @@ static const Theme THEME_DARK = {
     .container_bg = {35, 35, 35, 255},       // Slightly darker for contrast
     .container_title_bg = {50, 50, 50, 255}, // Lighter dark gray for title bar
     .default_font_size = 16,
-    .font_file = "FreeMono.ttf",
+    .font_file = "forms/core/FreeMono.ttf",
     .padding = 10,
     .roundness = 0.2f
 };
@@ -112,7 +112,7 @@ static const Theme THEME_HACKER = {
     .container_bg = {10, 10, 10, 255},       // Even darker gray for contrast
     .container_title_bg = {30, 30, 30, 255}, // Lighter dark for title bar
     .default_font_size = 16,
-    .font_file = "FreeMono.ttf",
+    .font_file = "forms/core/FreeMono.ttf",
     .padding = 10,
     .roundness = 0.1f                        // Less rounded for a "techy" feel
 };
