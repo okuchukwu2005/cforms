@@ -3,6 +3,7 @@
 #include <ctype.h> // for isspace
 #include <SDL2/SDL.h> // for SDL_Event, SDLK_*, etc.
 #include <SDL2/SDL_ttf.h> // for TTF_SizeText usage
+#include <math.h>   // For roundf in scaling
 
 typedef struct {
     int start;
@@ -82,8 +83,8 @@ Line* compute_visual_lines(const char* text, int max_width, TTF_Font* font, int*
 
 typedef struct {
     Parent* parent;            // Pointer to the parent window or container
-    int x, y;                  // Position of the textbox
-    int w, h;                  // Width and height of the textbox (taller by default)
+    int x, y;                  // Position of the textbox (logical)
+    int w, h;                  // Width and height of the textbox (logical, taller by default)
     char* place_holder;        // Placeholder text
     int max_length;            // Maximum text length
     char* text;                // Input text (supports \n for lines)
@@ -91,7 +92,7 @@ typedef struct {
     int cursor_pos;            // Cursor position (character index)
     int selection_start;       // Selection anchor (-1 if no selection)
     int visible_line_start;    // Index of first visible line
-    int line_height;           // Height of each line (computed from font)
+    int line_height;           // Height of each line (logical, computed from font)
 } TextBox;
 
 void register_widget_textbox(TextBox* textbox);
@@ -101,6 +102,15 @@ TextBox* new_textbox_(Parent* parent, int x, int y, int w, int max_length) {
         printf("Invalid parent or renderer\n");
         return NULL;
     }
+
+    // Fallback if no theme set
+    if (!current_theme) {
+        current_theme = (Theme*)&THEME_LIGHT;
+    }
+
+    int logical_font_size = current_theme->default_font_size;
+    char* font_file = current_theme->font_file ? current_theme->font_file : "FreeMono.ttf";
+    int logical_padding = current_theme->padding;
 
     TextBox* new_textbox = (TextBox*)malloc(sizeof(TextBox));
     if (!new_textbox) {
@@ -118,7 +128,7 @@ TextBox* new_textbox_(Parent* parent, int x, int y, int w, int max_length) {
     new_textbox->x = x;
     new_textbox->y = y;
     new_textbox->w = w;
-    new_textbox->h = 200;  // Taller by default for multi-line
+    new_textbox->h = 10 * (logical_font_size + logical_padding / 2);  // Example: ~10 lines tall logically
     new_textbox->max_length = max_length;
     new_textbox->text = (char*)malloc(max_length + 1);
     if (!new_textbox->text) {
@@ -133,13 +143,13 @@ TextBox* new_textbox_(Parent* parent, int x, int y, int w, int max_length) {
     new_textbox->selection_start = -1;
     new_textbox->visible_line_start = 0;
 
-    // Compute line_height from font
-    TTF_Font* font = TTF_OpenFont(FONT_FILE, 30);
+    // Compute line_height from font (logical)
+    TTF_Font* font = TTF_OpenFont(font_file, logical_font_size);
     if (font) {
-        TTF_SizeText(font, "A", NULL, &new_textbox->line_height);
+        new_textbox->line_height = TTF_FontHeight(font);
         TTF_CloseFont(font);
     } else {
-        new_textbox->line_height = 30;  // Fallback
+        new_textbox->line_height = logical_font_size + logical_padding / 2;  // Fallback
     }
 
     // Register widget
@@ -153,37 +163,55 @@ void render_textbox(TextBox* textbox) {
         return;
     }
 
-    // Calculate absolute position relative to parent
-    int abs_x = textbox->x + textbox->parent->x;
-    int abs_y = textbox->y + textbox->parent->y;
+    // Fallback if no theme set
+    if (!current_theme) {
+        current_theme = (Theme*)&THEME_LIGHT;
+    }
 
-    // Draw outline rect
-    draw_rect_(&textbox->parent->base, abs_x, abs_y, textbox->w, textbox->h, COLOR_BLACK);
-    // Draw textbox rect
-    draw_rect_(&textbox->parent->base, abs_x + 2, abs_y + 2, textbox->w - 4, textbox->h - 4, COLOR_WHITE);
+    float dpi = textbox->parent->base.dpi_scale;
+    int sx = (int)roundf((textbox->x + textbox->parent->x) * dpi);
+    int sy = (int)roundf((textbox->y + textbox->parent->y) * dpi);
+    int sw = (int)roundf(textbox->w * dpi);
+    int sh = (int)roundf(textbox->h * dpi);
+    int border_width = (int)roundf(2 * dpi);
+    int padding = (int)roundf(current_theme->padding * dpi);
+    int cursor_width = (int)roundf(2 * dpi);
+    int font_size = (int)roundf(current_theme->default_font_size * dpi);
+    char* font_file = current_theme->font_file ? current_theme->font_file : "FreeMono.ttf";
 
-    TTF_Font* font = TTF_OpenFont(FONT_FILE, 30);
+    TTF_Font* font = TTF_OpenFont(font_file, font_size);
     if (!font) {
         printf("Failed to load font: %s\n", TTF_GetError());
         return;
     }
 
+    int font_height = TTF_FontHeight(font);
+
+    Color outline_color = current_theme->accent;  // Outline
+    Color bg_color = current_theme->bg_secondary; // Background
+    Color cursor_color = current_theme->accent;   // Cursor
+    Color highlight_color = current_theme->accent_hovered; // Selection highlight
+
+    // Draw outline rect
+    draw_rect_(&textbox->parent->base, sx, sy, sw, sh, outline_color);
+    // Draw textbox rect (background)
+    draw_rect_(&textbox->parent->base, sx + border_width, sy + border_width, sw - 2 * border_width, sh - 2 * border_width, bg_color);
+
     // Determine text to display
     char* display_text = (textbox->is_active || textbox->text[0] != '\0') ? textbox->text : textbox->place_holder;
+    Color text_color = (display_text == textbox->place_holder) ? current_theme->text_secondary : current_theme->text_primary;
+    int text_x = sx + padding;
+    int text_y = sy + padding;
+    int max_text_width = sw - 2 * padding;
 
-    int padding = 10;
-    int text_x = abs_x + padding;
-    int text_y = abs_y + padding;
-    int max_text_width = textbox->w - 2 * padding;
-
-    // Compute visual lines
+    // Compute visual lines (using scaled font and width, but since scale-invariant, lines same as logical)
     int num_lines = 0;
     Line* lines = compute_visual_lines(display_text, max_text_width, font, &num_lines);
 
-    int visible_lines_count = (textbox->h - 2 * padding) / textbox->line_height;
+    int visible_lines_count = (sh - 2 * padding) / font_height;
 
     // Clip rendering to textbox rectangle
-    SDL_Rect clip_rect = {abs_x + 2, abs_y + 2, textbox->w - 4, textbox->h - 4};
+    SDL_Rect clip_rect = {sx + border_width, sy + border_width, sw - 2 * border_width, sh - 2 * border_width};
     SDL_RenderSetClipRect(textbox->parent->base.sdl_renderer, &clip_rect);
 
     int sel_min = -1;
@@ -204,7 +232,7 @@ void render_textbox(TextBox* textbox) {
             continue;
         }
 
-        int draw_y = text_y + (i - textbox->visible_line_start) * textbox->line_height;
+        int draw_y = text_y + (i - textbox->visible_line_start) * font_height;
 
         // If there's a selection, draw highlight for overlapping part
         if (sel_min != -1) {
@@ -234,16 +262,15 @@ void render_textbox(TextBox* textbox) {
                         TTF_SizeText(font, temp, &highlight_w, NULL);
                         free(temp);
 
-                        // Draw blue highlight
-                        Color highlight_color = {135, 206, 235, 255};  // Light blue
-                        draw_rect_(&textbox->parent->base, highlight_x, draw_y, highlight_w, textbox->line_height, highlight_color);
+                        // Draw highlight
+                        draw_rect_(&textbox->parent->base, highlight_x, draw_y, highlight_w, font_height, highlight_color);
                     }
                 }
             }
         }
 
         // Render line text
-        draw_text_from_font_(&textbox->parent->base, font, line_text, text_x, draw_y, COLOR_BLACK, ALIGN_LEFT);
+        draw_text_from_font_(&textbox->parent->base, font, line_text, text_x, draw_y, text_color, ALIGN_LEFT);
 
         free(line_text);
     }
@@ -257,7 +284,7 @@ void render_textbox(TextBox* textbox) {
                     break; // Not visible
                 }
                 int rel_line = i - textbox->visible_line_start;
-                int draw_y = text_y + rel_line * textbox->line_height;
+                int draw_y = text_y + rel_line * font_height;
                 int offset_chars = textbox->cursor_pos - l.start;
 
                 char* temp = (char*)malloc(offset_chars + 1);
@@ -269,7 +296,7 @@ void render_textbox(TextBox* textbox) {
                     free(temp);
 
                     int cursor_x = text_x + cursor_offset;
-                    draw_rect_(&textbox->parent->base, cursor_x, draw_y, 2, textbox->line_height, COLOR_BLACK);
+                    draw_rect_(&textbox->parent->base, cursor_x, draw_y, cursor_width, font_height, cursor_color);
                 }
                 break;
             }
@@ -287,18 +314,26 @@ void update_visible_lines(TextBox* textbox) {
         return;
     }
 
-    TTF_Font* font = TTF_OpenFont(FONT_FILE, 30);
+    // Fallback if no theme set
+    if (!current_theme) {
+        current_theme = (Theme*)&THEME_LIGHT;
+    }
+
+    int logical_font_size = current_theme->default_font_size;
+    char* font_file = current_theme->font_file ? current_theme->font_file : "FreeMono.ttf";
+    int logical_padding = current_theme->padding;
+
+    TTF_Font* font = TTF_OpenFont(font_file, logical_font_size);
     if (!font) {
         printf("Failed to load font: %s\n", TTF_GetError());
         return;
     }
 
-    int padding = 10;
-    int max_text_width = textbox->w - 2 * padding;
+    int max_text_width = textbox->w - 2 * logical_padding;
     int num_lines = 0;
     Line* lines = compute_visual_lines(textbox->text, max_text_width, font, &num_lines);
 
-    int visible_lines = (textbox->h - 2 * padding) / textbox->line_height;
+    int visible_lines = (textbox->h - 2 * logical_padding) / textbox->line_height;
 
     // Find cursor's visual line
     int cursor_line = -1;
@@ -333,7 +368,12 @@ void update_textbox(TextBox* textbox, SDL_Event event) {
         return;
     }
 
-    Uint16 mod = event.key.keysym.mod;
+    // Fallback if no theme set
+    if (!current_theme) {
+        current_theme = (Theme*)&THEME_LIGHT;
+    }
+
+    Uint16 mod = SDL_GetModState();  // Current mod state
 
     if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
         int abs_x = textbox->x + textbox->parent->x;
@@ -344,6 +384,40 @@ void update_textbox(TextBox* textbox, SDL_Event event) {
             mouseY >= abs_y && mouseY <= abs_y + textbox->h) {
             textbox->is_active = 1;
             textbox->selection_start = -1;
+
+            // Calculate cursor_pos from click position (logical)
+            int logical_font_size = current_theme->default_font_size;
+            char* font_file = current_theme->font_file ? current_theme->font_file : "FreeMono.ttf";
+            int logical_padding = current_theme->padding;
+
+            TTF_Font* font = TTF_OpenFont(font_file, logical_font_size);
+            if (font) {
+                int click_y = mouseY - (abs_y + logical_padding);
+                int clicked_line = textbox->visible_line_start + click_y / textbox->line_height;
+                int max_text_width = textbox->w - 2 * logical_padding;
+                int num_lines = 0;
+                Line* lines = compute_visual_lines(textbox->text, max_text_width, font, &num_lines);
+                if (clicked_line < num_lines) {
+                    Line l = lines[clicked_line];
+                    int click_x = mouseX - (abs_x + logical_padding);
+                    int cum_width = 0;
+                    textbox->cursor_pos = l.start;
+                    for (int j = 0; j < l.len; j++) {
+                        char ch[2] = {textbox->text[l.start + j], '\0'};
+                        int char_w;
+                        TTF_SizeText(font, ch, &char_w, NULL);
+                        if (cum_width + char_w / 2 > click_x) { // Closest by midpoint
+                            break;
+                        }
+                        cum_width += char_w;
+                        textbox->cursor_pos = l.start + j + 1;
+                    }
+                } else {
+                    textbox->cursor_pos = strlen(textbox->text);
+                }
+                free(lines);
+                TTF_CloseFont(font);
+            }
             update_visible_lines(textbox);
             printf("Textbox clicked! Active\n");
         } else {
@@ -402,14 +476,17 @@ void update_textbox(TextBox* textbox, SDL_Event event) {
                 update_visible_lines(textbox);
             }
         } else if (event.key.keysym.sym == SDLK_UP || event.key.keysym.sym == SDLK_DOWN) {
-            TTF_Font* font = TTF_OpenFont(FONT_FILE, 30);
+            int logical_font_size = current_theme->default_font_size;
+            char* font_file = current_theme->font_file ? current_theme->font_file : "FreeMono.ttf";
+            int logical_padding = current_theme->padding;
+
+            TTF_Font* font = TTF_OpenFont(font_file, logical_font_size);
             if (!font) {
                 printf("Failed to load font: %s\n", TTF_GetError());
                 return;
             }
 
-            int padding = 10;
-            int max_text_width = textbox->w - 2 * padding;
+            int max_text_width = textbox->w - 2 * logical_padding;
             int num_lines = 0;
             Line* lines = compute_visual_lines(textbox->text, max_text_width, font, &num_lines);
 
@@ -427,7 +504,7 @@ void update_textbox(TextBox* textbox, SDL_Event event) {
             }
 
             if (curr_line_idx != -1) {
-                // Compute preferred width
+                // Compute preferred width (logical)
                 char* temp = (char*)malloc(curr_offset_chars + 1);
                 if (temp) {
                     strncpy(temp, textbox->text + lines[curr_line_idx].start, curr_offset_chars);
@@ -462,7 +539,7 @@ void update_textbox(TextBox* textbox, SDL_Event event) {
                         textbox->cursor_pos = target_l.start + target_offset;
                     } else if (target_line_idx < 0) {
                         textbox->cursor_pos = 0;
-                    } else if (target_line_idx >= num_lines) {
+                    } else {
                         textbox->cursor_pos = strlen(textbox->text);
                     }
                 }

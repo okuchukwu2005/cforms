@@ -2,11 +2,12 @@
 #include <string.h> // for strlen, strcat
 #include <SDL2/SDL.h> // for SDL_Event, SDLK_*, etc.
 #include <SDL2/SDL_ttf.h> // for TTF_SizeText usage
+#include <math.h>   // For roundf in scaling
 
 typedef struct {
     Parent* parent;            // Pointer to the parent window or container
-    int x, y;                  // Position of the entry
-    int w, h;                  // Width and height of the entry
+    int x, y;                  // Position of the entry (logical)
+    int w, h;                  // Width and height of the entry (logical)
     char* place_holder;        // Placeholder text
     int max_length;            // Maximum text length
     char* text;                // Input text
@@ -24,6 +25,14 @@ Entry* new_entry_(Parent* parent, int x, int y, int w, int max_length) {
         return NULL;
     }
 
+    // Fallback if no theme set
+    if (!current_theme) {
+        current_theme = (Theme*)&THEME_LIGHT;
+    }
+
+    int logical_font_size = current_theme->default_font_size;
+    int logical_padding = current_theme->padding;
+
     Entry* new_entry = (Entry*)malloc(sizeof(Entry));
     if (!new_entry) {
         printf("Failed to allocate memory for entry\n");
@@ -40,7 +49,7 @@ Entry* new_entry_(Parent* parent, int x, int y, int w, int max_length) {
     new_entry->x = x;
     new_entry->y = y;
     new_entry->w = w;
-    new_entry->h = 50;
+    new_entry->h = logical_font_size + 2 * logical_padding;  // Proportional height, smaller default
     new_entry->max_length = max_length;
     new_entry->text = (char*)malloc(max_length + 1);
     if (!new_entry->text) {
@@ -52,6 +61,7 @@ Entry* new_entry_(Parent* parent, int x, int y, int w, int max_length) {
     new_entry->text[0] = '\0';
     new_entry->is_active = 0;
     new_entry->cursor_pos = 0;
+    new_entry->selection_start = -1;
     new_entry->visible_text_start = 0;
 
     // Register widget
@@ -65,36 +75,56 @@ void render_entry(Entry* entry) {
         return;
     }
 
-    // Calculate absolute position relative to parent
-    int abs_x = entry->x + entry->parent->x;
-    int abs_y = entry->y + entry->parent->y;
+    // Fallback if no theme set
+    if (!current_theme) {
+        current_theme = (Theme*)&THEME_LIGHT;
+    }
 
-    // Draw outline rect
-    draw_rect_(&entry->parent->base, abs_x, abs_y, entry->w, entry->h, COLOR_BLACK);
-    // Draw entry rect
-    draw_rect_(&entry->parent->base, abs_x + 2, abs_y + 2, entry->w - 4, entry->h - 4, COLOR_WHITE);
+    float dpi = entry->parent->base.dpi_scale;
+    int sx = (int)roundf((entry->x + entry->parent->x) * dpi);
+    int sy = (int)roundf((entry->y + entry->parent->y) * dpi);
+    int sw = (int)roundf(entry->w * dpi);
+    int sh = (int)roundf(entry->h * dpi);
+    int border_width = (int)roundf(2 * dpi);
+    int padding = (int)roundf(current_theme->padding * dpi);
+    int cursor_width = (int)roundf(2 * dpi);
+    int font_size = (int)roundf(current_theme->default_font_size * dpi);
+    char* font_file = current_theme->font_file ? current_theme->font_file : "FreeMono.ttf";
 
-    TTF_Font* font = TTF_OpenFont(FONT_FILE, 30);
+    TTF_Font* font = TTF_OpenFont(font_file, font_size);
     if (!font) {
         printf("Failed to load font: %s\n", TTF_GetError());
         return;
     }
 
+    int font_height = TTF_FontHeight(font);
+
+    Color outline_color = current_theme->accent;  // Outline
+    Color bg_color = current_theme->bg_secondary; // Background
+    Color cursor_color = current_theme->accent;   // Cursor
+    Color highlight_color = current_theme->accent_hovered; // Selection highlight
+
+    // Draw outline rect
+    draw_rect_(&entry->parent->base, sx, sy, sw, sh, outline_color);
+    // Draw entry rect (background)
+    draw_rect_(&entry->parent->base, sx + border_width, sy + border_width, sw - 2 * border_width, sh - 2 * border_width, bg_color);
+
     // Determine text to display
     char* display_text = (entry->is_active || entry->text[0] != '\0') ? entry->text + entry->visible_text_start : entry->place_holder;
-    int text_x = abs_x + 10;
-    int text_y = abs_y + 10;
+    Color text_color = (display_text == entry->place_holder) ? current_theme->text_secondary : current_theme->text_primary;
+    int text_x = sx + padding;
+    int text_y = sy + (sh - font_height) / 2;
 
     // Clip rendering to entry rectangle
-    SDL_Rect clip_rect = {abs_x + 2, abs_y + 2, entry->w - 4, entry->h - 4};
+    SDL_Rect clip_rect = {sx + border_width, sy + border_width, sw - 2 * border_width, sh - 2 * border_width};
     SDL_RenderSetClipRect(entry->parent->base.sdl_renderer, &clip_rect);
 
     // If there's a selection, draw highlight
     if (entry->selection_start != -1 && entry->is_active) {
-        int sel_start = entry->visible_text_start + (entry->selection_start < entry->cursor_pos ? entry->selection_start - entry->visible_text_start : entry->cursor_pos - entry->visible_text_start);
-        int sel_end = entry->visible_text_start + (entry->selection_start < entry->cursor_pos ? entry->cursor_pos - entry->visible_text_start : entry->selection_start - entry->visible_text_start);
+        int sel_start = (entry->selection_start < entry->cursor_pos ? entry->selection_start : entry->cursor_pos) - entry->visible_text_start;
+        int sel_end = (entry->selection_start < entry->cursor_pos ? entry->cursor_pos : entry->selection_start) - entry->visible_text_start;
 
-        if (sel_start < 0) sel_start = 0;  // Clamp to visible
+        if (sel_start < 0) sel_start = 0;
         if (sel_end > strlen(display_text)) sel_end = strlen(display_text);
 
         if (sel_start < sel_end) {
@@ -102,38 +132,35 @@ void render_entry(Entry* entry) {
             char temp_start[entry->max_length + 1];
             strncpy(temp_start, display_text, sel_start);
             temp_start[sel_start] = '\0';
-            int highlight_x = text_x;
-            int highlight_w = 0;
-            TTF_SizeText(font, temp_start, &highlight_x, NULL);  // Offset from text_x
-            highlight_x += text_x;
+            int highlight_offset = 0;
+            TTF_SizeText(font, temp_start, &highlight_offset, NULL);
+            int highlight_x = text_x + highlight_offset;
 
             // Highlight width
             strncpy(temp_start, display_text + sel_start, sel_end - sel_start);
             temp_start[sel_end - sel_start] = '\0';
+            int highlight_w = 0;
             TTF_SizeText(font, temp_start, &highlight_w, NULL);
 
-            // Draw blue highlight
-            Color highlight_color = {135, 206, 235, 255};  // Light blue
-            draw_rect_(&entry->parent->base, highlight_x, text_y, highlight_w, entry->h - 20, highlight_color);
+            // Draw highlight
+            draw_rect_(&entry->parent->base, highlight_x, text_y, highlight_w, font_height, highlight_color);
         }
     }
 
     // Render visible text
-    draw_text_from_font_(&entry->parent->base, font, display_text, text_x, text_y, COLOR_BLACK, ALIGN_LEFT);
+    draw_text_from_font_(&entry->parent->base, font, display_text, text_x, text_y, text_color, ALIGN_LEFT);
 
     // Render cursor if active and no selection (or at cursor_pos end)
     if (entry->is_active && entry->selection_start == -1) {
         int cursor_offset = 0;
         if (entry->text[0] != '\0') {
             char temp[entry->max_length + 1];
-            strncpy(temp, entry->text + entry->visible_text_start, entry->cursor_pos - entry->visible_text_start);
+            strncpy(temp, display_text, entry->cursor_pos - entry->visible_text_start);
             temp[entry->cursor_pos - entry->visible_text_start] = '\0';
             TTF_SizeText(font, temp, &cursor_offset, NULL);
         }
         int cursor_x = text_x + cursor_offset;
-        int text_h = 0;
-        TTF_SizeText(font, "A", NULL, &text_h);
-        draw_rect_(&entry->parent->base, cursor_x, text_y, 2, text_h, COLOR_BLACK);
+        draw_rect_(&entry->parent->base, cursor_x, text_y, cursor_width, font_height, cursor_color);
     }
 
     SDL_RenderSetClipRect(entry->parent->base.sdl_renderer, NULL);
@@ -147,14 +174,23 @@ void update_visible_text(Entry* entry) {
         return;
     }
 
-    TTF_Font* font = TTF_OpenFont(FONT_FILE, 30);
+    // Fallback if no theme set
+    if (!current_theme) {
+        current_theme = (Theme*)&THEME_LIGHT;
+    }
+
+    int logical_font_size = current_theme->default_font_size;
+    char* font_file = current_theme->font_file ? current_theme->font_file : "FreeMono.ttf";
+    int logical_padding = current_theme->padding;
+
+    TTF_Font* font = TTF_OpenFont(font_file, logical_font_size);
     if (!font) {
         printf("Failed to load font: %s\n", TTF_GetError());
         return;
     }
 
-    // Calculate max characters that fit in entry width
-    int max_visible_width = entry->w - 20; // Account for padding
+    // Calculate max characters that fit in entry width (logical)
+    int max_visible_width = entry->w - 2 * logical_padding; // Logical padding
     int text_width = 0;
     int max_visible_chars = 0;
     for (int i = 0; i < strlen(entry->text); i++) {
@@ -169,7 +205,7 @@ void update_visible_text(Entry* entry) {
         }
     }
 
-    // Adjust for cursor (existing)
+    // Adjust for cursor
     int cursor_pixel_x = 0;
     if (entry->cursor_pos > 0) {
         char temp[entry->max_length + 1];
@@ -198,7 +234,7 @@ void update_visible_text(Entry* entry) {
         }
     }
 
-    // Ensure bounds (existing)
+    // Ensure bounds
     if (entry->visible_text_start > strlen(entry->text) - max_visible_chars) {
         entry->visible_text_start = strlen(entry->text) > max_visible_chars ? strlen(entry->text) - max_visible_chars : 0;
     }
@@ -211,7 +247,12 @@ void update_entry(Entry* entry, SDL_Event event) {
         return;
     }
 
-    Uint16 mod = event.key.keysym.mod;  // For modifiers
+    // Fallback if no theme set
+    if (!current_theme) {
+        current_theme = (Theme*)&THEME_LIGHT;
+    }
+
+    Uint16 mod = SDL_GetModState();  // Use current mod state for all
 
     if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
         // Calculate absolute position relative to parent
@@ -225,9 +266,31 @@ void update_entry(Entry* entry, SDL_Event event) {
             mouseY >= abs_y && mouseY <= abs_y + entry->h) {
             entry->is_active = 1;
             printf("Entry clicked! Active\n");
-            // Optional: Calculate cursor_pos from click position for precision
-            // For now, just activate and clear selection
             entry->selection_start = -1;
+
+            // Calculate cursor_pos from click position (logical)
+            int logical_font_size = current_theme->default_font_size;
+            char* font_file = current_theme->font_file ? current_theme->font_file : "FreeMono.ttf";
+            int logical_padding = current_theme->padding;
+
+            TTF_Font* font = TTF_OpenFont(font_file, logical_font_size);
+            if (font) {
+                int click_offset = mouseX - (abs_x + logical_padding);
+                int cum_width = 0;
+                entry->cursor_pos = 0;
+                for (int i = 0; i < strlen(entry->text); i++) {
+                    char ch[2] = {entry->text[i], '\0'};
+                    int char_w;
+                    TTF_SizeText(font, ch, &char_w, NULL);
+                    if (cum_width + char_w / 2 > click_offset) { // Closest by midpoint
+                        break;
+                    }
+                    cum_width += char_w;
+                    entry->cursor_pos = i + 1;
+                }
+                TTF_CloseFont(font);
+            }
+            update_visible_text(entry);
         } else {
             entry->is_active = 0;
             printf("Clicked outside entry! Inactive\n");
@@ -242,7 +305,7 @@ void update_entry(Entry* entry, SDL_Event event) {
             entry->cursor_pos = sel_start;
             entry->selection_start = -1;
         }
-        // Then insert text (existing code)
+        // Then insert text
         int len = strlen(entry->text);
         int input_len = strlen(event.text.text);
         if (len + input_len < entry->max_length) {
