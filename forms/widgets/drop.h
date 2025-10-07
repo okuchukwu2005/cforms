@@ -140,7 +140,7 @@ void render_drop_down_(Drop* drop) {
     float dpi = drop->parent->base.dpi_scale;
     // Calculate absolute position relative to parent (logical), then scale
     int abs_x = drop->x + drop->parent->x;
-    int abs_y = drop->y + drop->parent->y;
+    int abs_y = drop->y + drop->parent->y+ drop->parent->title_height;
     int sx = (int)roundf(abs_x * dpi);
     int sy = (int)roundf(abs_y * dpi);
     int sw = (int)roundf(drop->w * dpi);
@@ -216,7 +216,7 @@ void update_drop_down_(Drop* drop, SDL_Event event) {
 
     // Calculate absolute position relative to parent (logical)
     int abs_x = drop->x + drop->parent->x;
-    int abs_y = drop->y + drop->parent->y;
+    int abs_y = drop->y + drop->parent->y+ drop->parent->title_height;
 
     int mouse_x, mouse_y;
     SDL_GetMouseState(&mouse_x, &mouse_y);

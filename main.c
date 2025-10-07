@@ -17,7 +17,7 @@ int main(void) {
     set_container_properties_(container2, true, "My Second Container", true, true);
 
     	const char* content = "This is a Demo of c forms";
-    Text* text = new_text_(container, 5,40, content, 16, COLOR_WHITE, ALIGN_LEFT);
+    Text* text = new_text_(container, 0,0, content, 16, COLOR_WHITE, ALIGN_LEFT);
         // ---------- RADIO BUTTON DEMO ----------
     // Group 1 (only one of these three can be selected at a time)
     new_radio_button_(container, 15, 100, 20, 20, "Option 1", 1);
@@ -45,6 +45,7 @@ int main(void) {
 // 
    	Button* button = new_button_(container2, 100, 400, 120, 40, "Click Me", OVERRIDE);
 
+	ProgressBar* prox = new_progress_bar_(container2, 20, 500, 250, 15, 0, 100, 50, true);
 
     
 

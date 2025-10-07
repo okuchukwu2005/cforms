@@ -61,7 +61,7 @@ void render_text(Text* text) {
 
     // Calculate absolute position relative to parent
     int abs_x = text->x + text->parent->x;
-    int abs_y = text->y + text->parent->y;
+    int abs_y = text->y + text->parent->y + text->parent->title_height;
 
     // Draw the text
     if (text->content) {

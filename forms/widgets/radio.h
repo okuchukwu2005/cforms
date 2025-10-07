@@ -116,7 +116,7 @@ static inline void render_radio_(Radio* radio) {
     float dpi = radio->parent->base.dpi_scale;
     // Calculate absolute position relative to parent (logical), then scale
     int abs_x = radio->x + radio->parent->x;
-    int abs_y = radio->y + radio->parent->y;
+    int abs_y = radio->y + radio->parent->y + radio->parent->title_height;
     int sx = (int)roundf(abs_x * dpi);
     int sy = (int)roundf(abs_y * dpi);
     int sh = (int)roundf(radio->h * dpi);  // Assuming square, w ignored or = h
@@ -160,7 +160,7 @@ static inline void update_radio_(Radio* radio, SDL_Event event) {
 
     // Calculate absolute position relative to parent (logical)
     int abs_x = radio->x + radio->parent->x;
-    int abs_y = radio->y + radio->parent->y;
+    int abs_y = radio->y + radio->parent->y + radio->parent->title_height;
 
     int mouse_x, mouse_y;
     SDL_GetMouseState(&mouse_x, &mouse_y);

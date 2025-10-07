@@ -10,19 +10,17 @@
 #include <string.h> // for strdup
 #include <SDL2/SDL.h> // for SDL_Event, etc.
 #include <SDL2/SDL_ttf.h> // for TTF_SizeText usage
-
+#include <math.h>   // For roundf in scaling
 
 void OVERRIDE(void) {
     printf("Button was clicked!\n");
     // Add custom logic, e.g., open a dialog, submit a form, etc.
 }
 
-
-
 typedef struct {
     Parent* parent;            // Pointer to the parent window or container
-    int x, y;                  // Position of the button
-    int w, h;                  // Width and height of the button
+    int x, y;                  // Position of the button (logical)
+    int w, h;                  // Width and height of the button (logical)
     char* label;               // Button label text
     void (*callback)(void);    // Callback function on click
     int is_hovered;            // Is the mouse hovering over the button?
@@ -99,9 +97,16 @@ void render_button(Button* button) {
         current_theme = (Theme*)&THEME_LIGHT;  // Or set a static fallback
     }
 
-    // Calculate absolute position relative to parent
+    float dpi = button->parent->base.dpi_scale;
+    // Calculate absolute position relative to parent (logical), then scale
     int abs_x = button->x + button->parent->x;
-    int abs_y = button->y + button->parent->y;
+    int abs_y = button->y + button->parent->y + button->parent->title_height;  // <-- Key offset here
+    int sx = (int)roundf(abs_x * dpi);
+    int sy = (int)roundf(abs_y * dpi);
+    int sw = (int)roundf(button->w * dpi);
+    int sh = (int)roundf(button->h * dpi);
+    float roundness = current_theme->roundness;  // Roundness is a ratio (0-1), no scaling needed
+    int font_size = (int)roundf(current_theme->default_font_size * dpi);
 
     // Determine bg color: custom > theme state variants
     Color button_color = button->custom_bg_color ? *button->custom_bg_color : current_theme->button_normal;
@@ -112,17 +117,17 @@ void render_button(Button* button) {
     }
 
     // Draw rounded rectangle (use theme roundness)
-    draw_rounded_rect_(&(button->parent->base), abs_x, abs_y, button->w, button->h, current_theme->roundness, button_color);
+    draw_rounded_rect_(&(button->parent->base), sx, sy, sw, sh, roundness, button_color);
 
     // Draw text centered
     if (button->label) {
-        int font_size = current_theme->default_font_size;  // From theme
-        TTF_Font* font = TTF_OpenFont(current_theme->font_file, font_size);
+        char* font_file = current_theme->font_file ? current_theme->font_file : "FreeMono.ttf";
+        TTF_Font* font = TTF_OpenFont(font_file, font_size);
         if (font) {
             int text_w, text_h;
             TTF_SizeText(font, button->label, &text_w, &text_h);
-            int text_x = abs_x + (button->w - text_w) / 2;
-            int text_y = abs_y + (button->h - text_h) / 2;
+            int text_x = sx + (sw - text_w) / 2;
+            int text_y = sy + (sh - text_h) / 2;
             Color text_color = button->custom_text_color ? *button->custom_text_color : current_theme->button_text;
             draw_text_from_font_(&(button->parent->base), font, button->label, text_x, text_y, text_color, ALIGN_LEFT);
             TTF_CloseFont(font);
@@ -136,14 +141,14 @@ void update_button(Button* button, SDL_Event event) {
         return;
     }
 
-    // Calculate absolute position relative to parent
+    // Calculate absolute position relative to parent (logical)
     int abs_x = button->x + button->parent->x;
-    int abs_y = button->y + button->parent->y;
+    int abs_y = button->y + button->parent->y+ button->parent->title_height;
 
     int mouseX, mouseY;
     SDL_GetMouseState(&mouseX, &mouseY);
 
-    // Check if mouse is over the button
+    // Check if mouse is over the button (logical)
     int over = (mouseX >= abs_x && mouseX <= abs_x + button->w &&
                 mouseY >= abs_y && mouseY <= abs_y + button->h);
 

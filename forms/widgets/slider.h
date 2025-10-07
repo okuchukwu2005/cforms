@@ -105,7 +105,7 @@ static inline void render_slider(Slider* slider) {
     float dpi = slider->parent->base.dpi_scale;
     // Calculate absolute position relative to parent (logical), then scale
     int abs_x = slider->x + slider->parent->x;
-    int abs_y = slider->y + slider->parent->y;
+    int abs_y = slider->y + slider->parent->y + slider->parent->title_height;
     int sx = (int)roundf(abs_x * dpi);
     int sy = (int)roundf(abs_y * dpi);
     int sw = (int)roundf(slider->w * dpi);
@@ -155,7 +155,7 @@ static inline void update_slider(Slider* slider, SDL_Event event) {
 
     // Calculate absolute position relative to parent (logical)
     int abs_x = slider->x + slider->parent->x;
-    int abs_y = slider->y + slider->parent->y;
+    int abs_y = slider->y + slider->parent->y + slider->parent->title_height;
 
     // Calculate thumb position and bounds (logical)
     float range = slider->max - slider->min;

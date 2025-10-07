@@ -11,4 +11,5 @@
 #include"widgets/slider.h"
 #include"widgets/button.h"
 #include"widgets/text.h"
+#include"widgets/progress.h"
 #include"core/app.h"

@@ -169,8 +169,11 @@ void render_textbox(TextBox* textbox) {
     }
 
     float dpi = textbox->parent->base.dpi_scale;
-    int sx = (int)roundf((textbox->x + textbox->parent->x) * dpi);
-    int sy = (int)roundf((textbox->y + textbox->parent->y) * dpi);
+    // Calculate absolute position relative to parent (logical), with title offset
+    int abs_x = textbox->x + textbox->parent->x;
+    int abs_y = textbox->y + textbox->parent->y + textbox->parent->title_height;
+    int sx = (int)roundf(abs_x * dpi);
+    int sy = (int)roundf(abs_y * dpi);
     int sw = (int)roundf(textbox->w * dpi);
     int sh = (int)roundf(textbox->h * dpi);
     int border_width = (int)roundf(2 * dpi);
@@ -373,15 +376,24 @@ void update_textbox(TextBox* textbox, SDL_Event event) {
         current_theme = (Theme*)&THEME_LIGHT;
     }
 
+    float dpi = textbox->parent->base.dpi_scale;
     Uint16 mod = SDL_GetModState();  // Current mod state
 
     if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+        // Calculate absolute position relative to parent (logical), with title offset
         int abs_x = textbox->x + textbox->parent->x;
-        int abs_y = textbox->y + textbox->parent->y;
+        int abs_y = textbox->y + textbox->parent->y + textbox->parent->title_height;
+        // Scale to physical for hit test
+        int s_abs_x = (int)roundf(abs_x * dpi);
+        int s_abs_y = (int)roundf(abs_y * dpi);
+        int s_w = (int)roundf(textbox->w * dpi);
+        int s_h = (int)roundf(textbox->h * dpi);
+
         int mouseX = event.button.x;
         int mouseY = event.button.y;
-        if (mouseX >= abs_x && mouseX <= abs_x + textbox->w &&
-            mouseY >= abs_y && mouseY <= abs_y + textbox->h) {
+        // Check if click is inside the rectangle (physical coords)
+        if (mouseX >= s_abs_x && mouseX <= s_abs_x + s_w &&
+            mouseY >= s_abs_y && mouseY <= s_abs_y + s_h) {
             textbox->is_active = 1;
             textbox->selection_start = -1;
 
@@ -392,14 +404,17 @@ void update_textbox(TextBox* textbox, SDL_Event event) {
 
             TTF_Font* font = TTF_OpenFont(font_file, logical_font_size);
             if (font) {
-                int click_y = mouseY - (abs_y + logical_padding);
+                // Convert physical mouse to logical for accurate char calc
+                int logical_mouse_x = (int)roundf(mouseX / dpi);
+                int logical_mouse_y = (int)roundf(mouseY / dpi);
+                int click_y = logical_mouse_y - (abs_y + logical_padding);
                 int clicked_line = textbox->visible_line_start + click_y / textbox->line_height;
                 int max_text_width = textbox->w - 2 * logical_padding;
                 int num_lines = 0;
                 Line* lines = compute_visual_lines(textbox->text, max_text_width, font, &num_lines);
                 if (clicked_line < num_lines) {
                     Line l = lines[clicked_line];
-                    int click_x = mouseX - (abs_x + logical_padding);
+                    int click_x = logical_mouse_x - (abs_x + logical_padding);
                     int cum_width = 0;
                     textbox->cursor_pos = l.start;
                     for (int j = 0; j < l.len; j++) {

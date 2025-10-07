@@ -81,8 +81,11 @@ void render_entry(Entry* entry) {
     }
 
     float dpi = entry->parent->base.dpi_scale;
-    int sx = (int)roundf((entry->x + entry->parent->x) * dpi);
-    int sy = (int)roundf((entry->y + entry->parent->y) * dpi);
+    // Calculate absolute position relative to parent (logical), with title offset
+    int abs_x = entry->x + entry->parent->x;
+    int abs_y = entry->y + entry->parent->y + entry->parent->title_height;
+    int sx = (int)roundf(abs_x * dpi);
+    int sy = (int)roundf(abs_y * dpi);
     int sw = (int)roundf(entry->w * dpi);
     int sh = (int)roundf(entry->h * dpi);
     int border_width = (int)roundf(2 * dpi);
@@ -252,18 +255,24 @@ void update_entry(Entry* entry, SDL_Event event) {
         current_theme = (Theme*)&THEME_LIGHT;
     }
 
+    float dpi = entry->parent->base.dpi_scale;
     Uint16 mod = SDL_GetModState();  // Use current mod state for all
 
     if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
-        // Calculate absolute position relative to parent
+        // Calculate absolute position relative to parent (logical), with title offset
         int abs_x = entry->x + entry->parent->x;
-        int abs_y = entry->y + entry->parent->y;
+        int abs_y = entry->y + entry->parent->y + entry->parent->title_height;
+        // Scale to physical for hit test
+        int s_abs_x = (int)roundf(abs_x * dpi);
+        int s_abs_y = (int)roundf(abs_y * dpi);
+        int s_w = (int)roundf(entry->w * dpi);
+        int s_h = (int)roundf(entry->h * dpi);
 
         int mouseX = event.button.x;
         int mouseY = event.button.y;
-        // Check if click is inside the rectangle
-        if (mouseX >= abs_x && mouseX <= abs_x + entry->w &&
-            mouseY >= abs_y && mouseY <= abs_y + entry->h) {
+        // Check if click is inside the rectangle (physical coords)
+        if (mouseX >= s_abs_x && mouseX <= s_abs_x + s_w &&
+            mouseY >= s_abs_y && mouseY <= s_abs_y + s_h) {
             entry->is_active = 1;
             printf("Entry clicked! Active\n");
             entry->selection_start = -1;
@@ -275,7 +284,9 @@ void update_entry(Entry* entry, SDL_Event event) {
 
             TTF_Font* font = TTF_OpenFont(font_file, logical_font_size);
             if (font) {
-                int click_offset = mouseX - (abs_x + logical_padding);
+                // Convert physical mouse to logical for accurate char calc
+                int logical_mouse_x = (int)roundf(mouseX / dpi);
+                int click_offset = logical_mouse_x - (abs_x + logical_padding);
                 int cum_width = 0;
                 entry->cursor_pos = 0;
                 for (int i = 0; i < strlen(entry->text); i++) {

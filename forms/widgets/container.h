@@ -139,29 +139,43 @@ static inline void render_container(Parent* container) {
 static inline void update_container(Parent* container, SDL_Event event) {
     if (!container || !container->is_open) return;
 
+    float dpi = container->base.dpi_scale;
+    // Scale bounds to physical
+    int s_x = (int)roundf(container->x * dpi);
+    int s_y = (int)roundf(container->y * dpi);
+    int s_w = (int)roundf(container->w * dpi);
+    int s_h = (int)roundf(container->h * dpi);
+    int s_title_h = (int)roundf(container->title_height * dpi);
+    int s_resize_zone = (int)roundf(container->resize_zone * dpi);
+
     int mouse_x, mouse_y;
     SDL_GetMouseState(&mouse_x, &mouse_y);
 
     bool in_title_bar = container->has_title_bar &&
-        mouse_x >= container->x &&
-        mouse_x <= container->x + container->w &&
-        mouse_y >= container->y &&
-        mouse_y <= container->y + container->title_height;
+        mouse_x >= s_x &&
+        mouse_x <= s_x + s_w &&
+        mouse_y >= s_y &&
+        mouse_y <= s_y + s_title_h;
 
     bool in_close_button = false;
     if (container->closeable) {
-        int btn_size = 20;  // Logical (no change needed)
+        // btn_size logical, scale it
+        int btn_size = 20;  // Logical
+        int s_btn_size = (int)roundf(btn_size * dpi);
+        // Logical btn pos relative to container
         int btn_x = container->x + container->w - btn_size - 5;
         int btn_y = container->y + 5;
-        in_close_button = mouse_x >= btn_x && mouse_x <= btn_x + btn_size &&
-                          mouse_y >= btn_y && mouse_y <= btn_y + btn_size;
+        int s_btn_x = (int)roundf(btn_x * dpi);
+        int s_btn_y = (int)roundf(btn_y * dpi);
+        in_close_button = mouse_x >= s_btn_x && mouse_x <= s_btn_x + s_btn_size &&
+                          mouse_y >= s_btn_y && mouse_y <= s_btn_y + s_btn_size;
     }
 
     bool in_resize_area = container->resizeable &&
-        mouse_x >= container->x + container->w - container->resize_zone &&
-        mouse_x <= container->x + container->w &&
-        mouse_y >= container->y + container->h - container->resize_zone &&
-        mouse_y <= container->y + container->h;
+        mouse_x >= s_x + s_w - s_resize_zone &&
+        mouse_x <= s_x + s_w &&
+        mouse_y >= s_y + s_h - s_resize_zone &&
+        mouse_y <= s_y + s_h;
 
     switch (event.type) {
         case SDL_MOUSEBUTTONDOWN:
@@ -172,8 +186,9 @@ static inline void update_container(Parent* container, SDL_Event event) {
                     container->is_resizing = true;
                 } else if (in_title_bar && container->moveable) {
                     container->is_dragging = true;
-                    container->drag_offset_x = mouse_x - container->x;
-                    container->drag_offset_y = mouse_y - container->y;
+                    // Offsets in logical coords (consistent with drag)
+                    container->drag_offset_x = (int)roundf(mouse_x / dpi) - container->x;
+                    container->drag_offset_y = (int)roundf(mouse_y / dpi) - container->y;
                 }
             }
             break;
@@ -187,11 +202,11 @@ static inline void update_container(Parent* container, SDL_Event event) {
 
         case SDL_MOUSEMOTION:
             if (container->is_dragging) {
-                container->x = mouse_x - container->drag_offset_x;
-                container->y = mouse_y - container->drag_offset_y;
+                container->x = (int)roundf(mouse_x / dpi) - container->drag_offset_x;
+                container->y = (int)roundf(mouse_y / dpi) - container->drag_offset_y;
             } else if (container->is_resizing) {
-                container->w = mouse_x - container->x;
-                container->h = mouse_y - container->y;
+                container->w = (int)roundf(mouse_x / dpi) - container->x;
+                container->h = (int)roundf(mouse_y / dpi) - container->y;
                 if (container->h < container->title_height + 50) {
                     container->h = container->title_height + 50;
                 }
