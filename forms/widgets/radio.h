@@ -217,4 +217,12 @@ static inline void update_all_registered_radios(SDL_Event event) {
     }
 }
 
+static inline void free_all_registered_radios(void) {
+    for (int i = 0; i < radios_count; i++) {
+        free_radio_(radio_widgets[i]);
+        radio_widgets[i] = NULL;
+    }
+    radios_count = 0;
+}
+
 #endif // RADIO_H

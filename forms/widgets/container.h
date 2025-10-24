@@ -236,4 +236,14 @@ static inline void free_con_(Parent* parent) {
     }
 }
 
+static inline void free_all_registered_containers(void) {
+    for (int i = 0; i < containers_count; i++) {
+        if (container_widgets[i]) {
+            free_con_(container_widgets[i]);
+            container_widgets[i] = NULL;
+        }
+    }
+    containers_count = 0;
+}
+
 #endif /* CONTAINER_H */

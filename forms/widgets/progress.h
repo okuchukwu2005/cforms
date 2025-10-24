@@ -189,4 +189,14 @@ static inline void update_all_registered_progress_bars(SDL_Event event) {
     }
 }
 
+static inline void free_all_registered_progress_bars(void) {
+    for (int i = 0; i < progress_bars_count; i++) {
+        if (progress_bar_widgets[i]) {
+            free_progress_bar(progress_bar_widgets[i]);
+            progress_bar_widgets[i] = NULL;
+        }
+    }
+    progress_bars_count = 0;
+}
+
 #endif // PROGRESS_BAR_H

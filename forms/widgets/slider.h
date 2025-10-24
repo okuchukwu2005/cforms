@@ -217,5 +217,13 @@ static inline void update_all_registered_sliders(SDL_Event event) {
         }
     }
 }
-
+static inline void free_all_registered_sliders(void) {
+    for (int i = 0; i < sliders_count; i++) {
+        if (sliders[i]) {
+            free_slider(sliders[i]);
+            sliders[i] = NULL;
+        }
+    }
+    sliders_count = 0;
+}
 #endif // SLIDER_H

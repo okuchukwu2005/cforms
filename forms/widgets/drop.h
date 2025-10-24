@@ -297,4 +297,11 @@ static inline void update_all_registered_drops(SDL_Event event) {
     }
 }
 
+void free_all_registered_drops(void) {
+    for (int i = 0; i < drops_count; i++) {
+        free_drop_(drop_widgets[i]);
+        drop_widgets[i] = NULL;
+    }
+    drops_count = 0;
+}
 #endif // DROP_H

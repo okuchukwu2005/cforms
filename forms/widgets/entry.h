@@ -615,3 +615,13 @@ void update_all_registered_entrys(SDL_Event event) {
         }
     }
 }
+
+void free_all_registered_entrys(void) {
+    for (int i = 0; i < entrys_count; i++) {
+        if (entry_widgets[i]) {
+            free_entry(entry_widgets[i]);
+            entry_widgets[i] = NULL;
+        }
+    }
+    entrys_count = 0;
+}

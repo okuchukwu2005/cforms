@@ -764,3 +764,13 @@ void update_all_registered_textboxs(SDL_Event event) {
         }
     }
 }
+
+void free_all_registered_textboxes(void) {
+    for (int i = 0; i < textboxs_count; i++) {
+        if (textbox_widgets[i]) {
+            free_textbox(textbox_widgets[i]);
+            textbox_widgets[i] = NULL;
+        }
+    }
+    textboxs_count = 0;
+}

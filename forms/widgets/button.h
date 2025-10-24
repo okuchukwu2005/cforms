@@ -205,5 +205,11 @@ void update_all_registered_buttons(SDL_Event event) {
         }
     }
 }
-
+void free_all_registered_buttons(void) {
+    for (int i = 0; i < buttons_count; i++) {
+        free_button(button_widgets[i]);
+        button_widgets[i] = NULL;
+    }
+    buttons_count = 0;
+}
 #endif // BUTTON_H

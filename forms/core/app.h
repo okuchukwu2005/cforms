@@ -11,8 +11,6 @@ App init(void) {
     
     // Initialize other global resources if needed
     // For example: Load global fonts, set SDL hints, or init other subsystems
-    // SDL_Init(SDL_INIT_EVERYTHING);  // If not already in new_window_
-    // TTF_Init();  // If not already handled
     
     return app;
 }
@@ -97,5 +95,14 @@ void app_run_(Parent* parent) {
 
 	// free stuffs
 	free_all_registered_images();
+	free_all_registered_buttons();
+	free_all_registered_drops();
+	free_all_registered_radios();
+	free_all_registered_texts();
+	free_all_registered_containers();
+	free_all_registered_entrys();
+	free_all_registered_progress_bars();
+	free_all_registered_sliders();
+	free_all_registered_textboxes();
     destroy_parent(parent);
 }
