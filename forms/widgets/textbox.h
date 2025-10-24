@@ -93,6 +93,7 @@ typedef struct {
     int selection_start;       // Selection anchor (-1 if no selection)
     int visible_line_start;    // Index of first visible line
     int line_height;           // Height of each line (logical, computed from font)
+    int is_mouse_selecting;    // Flag to track if mouse is being used to select text
 } TextBox;
 
 void register_widget_textbox(TextBox* textbox);
@@ -142,6 +143,7 @@ TextBox* new_textbox_(Parent* parent, int x, int y, int w, int max_length) {
     new_textbox->cursor_pos = 0;
     new_textbox->selection_start = -1;
     new_textbox->visible_line_start = 0;
+    new_textbox->is_mouse_selecting = 0; // Initialize mouse selection flag
 
     // Compute line_height from font (logical)
     TTF_Font* font = TTF_OpenFont(font_file, logical_font_size);
@@ -157,19 +159,25 @@ TextBox* new_textbox_(Parent* parent, int x, int y, int w, int max_length) {
     return new_textbox;
 }
 
+// Renders the textbox widget to the screen
+// Parameters:
+// - textbox: The TextBox widget to render
 void render_textbox(TextBox* textbox) {
+    // Validate inputs to ensure the textbox, its parent, and renderer are valid
     if (!textbox || !textbox->parent || !textbox->parent->base.sdl_renderer || !textbox->parent->is_open) {
         printf("Invalid textbox, renderer, or parent is not open\n");
         return;
     }
 
-    // Fallback if no theme set
+    // Default to light theme if none is set
     if (!current_theme) {
         current_theme = (Theme*)&THEME_LIGHT;
     }
 
+    // Get DPI scale for converting logical coordinates to physical pixels
     float dpi = textbox->parent->base.dpi_scale;
-    // Calculate absolute position relative to parent (logical), with title offset
+
+    // Calculate absolute position in logical coordinates, accounting for parent position and title bar
     int abs_x = textbox->x + textbox->parent->x;
     int abs_y = textbox->y + textbox->parent->y + textbox->parent->title_height;
     int sx = (int)roundf(abs_x * dpi);
@@ -182,23 +190,27 @@ void render_textbox(TextBox* textbox) {
     int font_size = (int)roundf(current_theme->default_font_size * dpi);
     char* font_file = current_theme->font_file ? current_theme->font_file : "FreeMono.ttf";
 
+    // Load the font for rendering text
     TTF_Font* font = TTF_OpenFont(font_file, font_size);
     if (!font) {
         printf("Failed to load font: %s\n", TTF_GetError());
         return;
     }
 
+    // Get the font height for vertical alignment
     int font_height = TTF_FontHeight(font);
 
-    Color outline_color = current_theme->accent;  // Outline
-    Color bg_color = current_theme->bg_secondary; // Background
-    Color cursor_color = current_theme->accent;   // Cursor
-    Color highlight_color = current_theme->accent_hovered; // Selection highlight
+    // Define colors from the theme for consistent styling
+    Color outline_color = current_theme->accent;  // Border color
+    Color bg_color = current_theme->bg_secondary; // Background color
+    Color cursor_color = current_theme->accent;   // Cursor color
+    Color highlight_color = current_theme->accent_hovered; // Selection highlight color
 
     // Draw outline rect
     draw_rect_(&textbox->parent->base, sx, sy, sw, sh, outline_color);
     // Draw textbox rect (background)
-    draw_rect_(&textbox->parent->base, sx + border_width, sy + border_width, sw - 2 * border_width, sh - 2 * border_width, bg_color);
+    draw_rect_(&textbox->parent->base, sx + border_width, sy + border_width, 
+               sw - 2 * border_width, sh - 2 * border_width, bg_color);
 
     // Determine text to display
     char* display_text = (textbox->is_active || textbox->text[0] != '\0') ? textbox->text : textbox->place_holder;
@@ -211,12 +223,14 @@ void render_textbox(TextBox* textbox) {
     int num_lines = 0;
     Line* lines = compute_visual_lines(display_text, max_text_width, font, &num_lines);
 
+    // Calculate number of visible lines
     int visible_lines_count = (sh - 2 * padding) / font_height;
 
     // Clip rendering to textbox rectangle
     SDL_Rect clip_rect = {sx + border_width, sy + border_width, sw - 2 * border_width, sh - 2 * border_width};
     SDL_RenderSetClipRect(textbox->parent->base.sdl_renderer, &clip_rect);
 
+    // Determine selection range
     int sel_min = -1;
     int sel_max = -1;
     if (textbox->selection_start != -1 && textbox->is_active) {
@@ -278,8 +292,8 @@ void render_textbox(TextBox* textbox) {
         free(line_text);
     }
 
-    // Render cursor if active and no selection
-    if (textbox->is_active && textbox->selection_start == -1) {
+    // Render cursor if active
+    if (textbox->is_active) {
         for (int i = 0; i < num_lines; i++) {
             Line l = lines[i];
             if (textbox->cursor_pos >= l.start && textbox->cursor_pos <= l.start + l.len) {
@@ -310,6 +324,7 @@ void render_textbox(TextBox* textbox) {
     SDL_RenderSetClipRect(textbox->parent->base.sdl_renderer, NULL);
     TTF_CloseFont(font);
 }
+
 
 void update_visible_lines(TextBox* textbox) {
     if (!textbox || !textbox->parent) {
@@ -365,81 +380,140 @@ void update_visible_lines(TextBox* textbox) {
     TTF_CloseFont(font);
 }
 
+// Updates the textbox widget based on SDL events (mouse, keyboard, text input)
+// Parameters:
+// - textbox: The TextBox widget to update
+// - event: The SDL event to process
 void update_textbox(TextBox* textbox, SDL_Event event) {
+    // Validate inputs to ensure the textbox, its parent, and parent state are valid
     if (!textbox || !textbox->parent || !textbox->parent->is_open) {
         printf("Invalid textbox, parent, or parent is not open\n");
         return;
     }
 
-    // Fallback if no theme set
+    // Default to light theme if none is set for consistent styling
     if (!current_theme) {
         current_theme = (Theme*)&THEME_LIGHT;
     }
 
+    // Get DPI scale for converting logical to physical coordinates
     float dpi = textbox->parent->base.dpi_scale;
-    Uint16 mod = SDL_GetModState();  // Current mod state
+    Uint16 mod = SDL_GetModState(); // Current keyboard modifier state (e.g., Shift, Ctrl)
 
+    // Calculate absolute position in logical coordinates, accounting for parent and title bar
+    int abs_x = textbox->x + textbox->parent->x;
+    int abs_y = textbox->y + textbox->parent->y + textbox->parent->title_height;
+    // Scale to physical for hit test
+    int s_abs_x = (int)roundf(abs_x * dpi);
+    int s_abs_y = (int)roundf(abs_y * dpi);
+    int s_w = (int)roundf(textbox->w * dpi);
+    int s_h = (int)roundf(textbox->h * dpi);
+
+    // Load font for cursor position calculations
+    int logical_font_size = current_theme->default_font_size;
+    char* font_file = current_theme->font_file ? current_theme->font_file : "FreeMono.ttf";
+    int logical_padding = current_theme->padding;
+    TTF_Font* font = TTF_OpenFont(font_file, logical_font_size);
+    if (!font) {
+        printf("Failed to load font: %s\n", TTF_GetError());
+        return;
+    }
+
+    // Handle mouse button down event (left click)
     if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
-        // Calculate absolute position relative to parent (logical), with title offset
-        int abs_x = textbox->x + textbox->parent->x;
-        int abs_y = textbox->y + textbox->parent->y + textbox->parent->title_height;
-        // Scale to physical for hit test
-        int s_abs_x = (int)roundf(abs_x * dpi);
-        int s_abs_y = (int)roundf(abs_y * dpi);
-        int s_w = (int)roundf(textbox->w * dpi);
-        int s_h = (int)roundf(textbox->h * dpi);
-
         int mouseX = event.button.x;
         int mouseY = event.button.y;
-        // Check if click is inside the rectangle (physical coords)
+        // Check if click is inside the textbox (physical coords)
         if (mouseX >= s_abs_x && mouseX <= s_abs_x + s_w &&
             mouseY >= s_abs_y && mouseY <= s_abs_y + s_h) {
-            textbox->is_active = 1;
-            textbox->selection_start = -1;
+            textbox->is_active = 1; // Activate the textbox
+            textbox->is_mouse_selecting = 1; // Enable mouse-based selection
+            textbox->selection_start = -1; // Clear existing selection
+            printf("Textbox clicked! Active\n");
 
             // Calculate cursor_pos from click position (logical)
-            int logical_font_size = current_theme->default_font_size;
-            char* font_file = current_theme->font_file ? current_theme->font_file : "FreeMono.ttf";
-            int logical_padding = current_theme->padding;
-
-            TTF_Font* font = TTF_OpenFont(font_file, logical_font_size);
-            if (font) {
-                // Convert physical mouse to logical for accurate char calc
-                int logical_mouse_x = (int)roundf(mouseX / dpi);
-                int logical_mouse_y = (int)roundf(mouseY / dpi);
-                int click_y = logical_mouse_y - (abs_y + logical_padding);
-                int clicked_line = textbox->visible_line_start + click_y / textbox->line_height;
-                int max_text_width = textbox->w - 2 * logical_padding;
-                int num_lines = 0;
-                Line* lines = compute_visual_lines(textbox->text, max_text_width, font, &num_lines);
-                if (clicked_line < num_lines) {
-                    Line l = lines[clicked_line];
-                    int click_x = logical_mouse_x - (abs_x + logical_padding);
-                    int cum_width = 0;
-                    textbox->cursor_pos = l.start;
-                    for (int j = 0; j < l.len; j++) {
-                        char ch[2] = {textbox->text[l.start + j], '\0'};
-                        int char_w;
-                        TTF_SizeText(font, ch, &char_w, NULL);
-                        if (cum_width + char_w / 2 > click_x) { // Closest by midpoint
-                            break;
-                        }
-                        cum_width += char_w;
-                        textbox->cursor_pos = l.start + j + 1;
+            int logical_mouse_x = (int)roundf(mouseX / dpi);
+            int logical_mouse_y = (int)roundf(mouseY / dpi);
+            int click_y = logical_mouse_y - (abs_y + logical_padding);
+            int clicked_line = textbox->visible_line_start + click_y / textbox->line_height;
+            int max_text_width = textbox->w - 2 * logical_padding;
+            int num_lines = 0;
+            Line* lines = compute_visual_lines(textbox->text, max_text_width, font, &num_lines);
+            if (clicked_line < num_lines) {
+                Line l = lines[clicked_line];
+                int click_x = logical_mouse_x - (abs_x + logical_padding);
+                int cum_width = 0;
+                textbox->cursor_pos = l.start;
+                for (int j = 0; j < l.len; j++) {
+                    char ch[2] = {textbox->text[l.start + j], '\0'};
+                    int char_w;
+                    TTF_SizeText(font, ch, &char_w, NULL);
+                    if (cum_width + char_w / 2 > click_x) { // Closest character by midpoint
+                        break;
                     }
-                } else {
-                    textbox->cursor_pos = strlen(textbox->text);
+                    cum_width += char_w;
+                    textbox->cursor_pos = l.start + j + 1;
                 }
-                free(lines);
-                TTF_CloseFont(font);
+            } else {
+                textbox->cursor_pos = strlen(textbox->text); // Click beyond text sets cursor to end
             }
+            free(lines);
             update_visible_lines(textbox);
-            printf("Textbox clicked! Active\n");
         } else {
-            textbox->is_active = 0;
+            textbox->is_active = 0; // Deactivate if clicked outside
+            textbox->is_mouse_selecting = 0; // Stop mouse selection
+            textbox->selection_start = -1; // Clear selection
             printf("Clicked outside textbox! Inactive\n");
         }
-    } else if (event.type == SDL_TEXTINPUT && textbox->is_active) {
+    } 
+    // Handle mouse button up event (left click)
+    else if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT) {
+        textbox->is_mouse_selecting = 0; // End mouse-based selection
+    } 
+    // Handle mouse motion for drag selection
+    else if (event.type == SDL_MOUSEMOTION && textbox->is_mouse_selecting && (event.motion.state & SDL_BUTTON_LMASK)) {
+        int mouseX = event.motion.x;
+        int mouseY = event.motion.y;
+        // Update selection if mouse is within textbox bounds (optional: can remove bounds check)
+        if (mouseX >= s_abs_x && mouseX <= s_abs_x + s_w &&
+            mouseY >= s_abs_y && mouseY <= s_abs_y + s_h) {
+            // Set selection anchor on first drag motion if not already set
+            if (textbox->selection_start == -1) {
+                textbox->selection_start = textbox->cursor_pos;
+            }
+            // Calculate new cursor position from mouse position
+            int logical_mouse_x = (int)roundf(mouseX / dpi);
+            int logical_mouse_y = (int)roundf(mouseY / dpi);
+            int click_y = logical_mouse_y - (abs_y + logical_padding);
+            int clicked_line = textbox->visible_line_start + click_y / textbox->line_height;
+            int max_text_width = textbox->w - 2 * logical_padding;
+            int num_lines = 0;
+            Line* lines = compute_visual_lines(textbox->text, max_text_width, font, &num_lines);
+            if (clicked_line < num_lines) {
+                Line l = lines[clicked_line];
+                int click_x = logical_mouse_x - (abs_x + logical_padding);
+                int cum_width = 0;
+                textbox->cursor_pos = l.start;
+                for (int j = 0; j < l.len; j++) {
+                    char ch[2] = {textbox->text[l.start + j], '\0'};
+                    int char_w;
+                    TTF_SizeText(font, ch, &char_w, NULL);
+                    if (cum_width + char_w / 2 > click_x) {
+                        break;
+                    }
+                    cum_width += char_w;
+                    textbox->cursor_pos = l.start + j + 1;
+                }
+            } else {
+                textbox->cursor_pos = strlen(textbox->text);
+            }
+            free(lines);
+            update_visible_lines(textbox);
+        }
+    } 
+    // Handle text input when textbox is active
+    else if (event.type == SDL_TEXTINPUT && textbox->is_active) {
+        // If there's a selection, delete it before inserting new text
         if (textbox->selection_start != -1) {
             int sel_start = textbox->selection_start < textbox->cursor_pos ? textbox->selection_start : textbox->cursor_pos;
             int sel_end = textbox->selection_start < textbox->cursor_pos ? textbox->cursor_pos : textbox->selection_start;
@@ -447,33 +521,56 @@ void update_textbox(TextBox* textbox, SDL_Event event) {
             textbox->cursor_pos = sel_start;
             textbox->selection_start = -1;
         }
+        // Insert new text at cursor position
         int len = strlen(textbox->text);
         int input_len = strlen(event.text.text);
         if (len + input_len < textbox->max_length) {
-            memmove(textbox->text + textbox->cursor_pos + input_len, textbox->text + textbox->cursor_pos, len - textbox->cursor_pos + 1);
+            memmove(textbox->text + textbox->cursor_pos + input_len, 
+                    textbox->text + textbox->cursor_pos, len - textbox->cursor_pos + 1);
             strncpy(textbox->text + textbox->cursor_pos, event.text.text, input_len);
             textbox->cursor_pos += input_len;
             update_visible_lines(textbox);
         }
-    } else if (event.type == SDL_KEYDOWN && textbox->is_active) {
+    } 
+    // Handle key presses when textbox is active
+    else if (event.type == SDL_KEYDOWN && textbox->is_active) {
         if (event.key.keysym.sym == SDLK_BACKSPACE) {
             if (textbox->selection_start != -1) {
+                // Delete selected text
                 int sel_start = textbox->selection_start < textbox->cursor_pos ? textbox->selection_start : textbox->cursor_pos;
                 int sel_end = textbox->selection_start < textbox->cursor_pos ? textbox->cursor_pos : textbox->selection_start;
                 memmove(textbox->text + sel_start, textbox->text + sel_end, strlen(textbox->text) - sel_end + 1);
                 textbox->cursor_pos = sel_start;
                 textbox->selection_start = -1;
             } else if (textbox->cursor_pos > 0) {
-                memmove(textbox->text + textbox->cursor_pos - 1, textbox->text + textbox->cursor_pos, strlen(textbox->text) - textbox->cursor_pos + 1);
+                // Delete character before cursor
+                memmove(textbox->text + textbox->cursor_pos - 1, 
+                        textbox->text + textbox->cursor_pos, strlen(textbox->text) - textbox->cursor_pos + 1);
                 textbox->cursor_pos--;
+            }
+            update_visible_lines(textbox);
+        } else if (event.key.keysym.sym == SDLK_DELETE) {
+            if (textbox->selection_start != -1) {
+                // Delete selected text (same as backspace)
+                int sel_start = textbox->selection_start < textbox->cursor_pos ? textbox->selection_start : textbox->cursor_pos;
+                int sel_end = textbox->selection_start < textbox->cursor_pos ? textbox->cursor_pos : textbox->selection_start;
+                memmove(textbox->text + sel_start, textbox->text + sel_end, strlen(textbox->text) - sel_end + 1);
+                textbox->cursor_pos = sel_start;
+                textbox->selection_start = -1;
+            } else if (textbox->cursor_pos < strlen(textbox->text)) {
+                // Delete character after cursor
+                memmove(textbox->text + textbox->cursor_pos, 
+                        textbox->text + textbox->cursor_pos + 1, strlen(textbox->text) - textbox->cursor_pos);
             }
             update_visible_lines(textbox);
         } else if (event.key.keysym.sym == SDLK_LEFT) {
             if (textbox->cursor_pos > 0) {
                 if (mod & KMOD_SHIFT) {
+                    // Extend selection with Shift+Left
                     if (textbox->selection_start == -1) textbox->selection_start = textbox->cursor_pos;
                     textbox->cursor_pos--;
                 } else {
+                    // Move cursor left, clear selection
                     textbox->cursor_pos--;
                     textbox->selection_start = -1;
                 }
@@ -482,25 +579,17 @@ void update_textbox(TextBox* textbox, SDL_Event event) {
         } else if (event.key.keysym.sym == SDLK_RIGHT) {
             if (textbox->cursor_pos < strlen(textbox->text)) {
                 if (mod & KMOD_SHIFT) {
+                    // Extend selection with Shift+Right
                     if (textbox->selection_start == -1) textbox->selection_start = textbox->cursor_pos;
                     textbox->cursor_pos++;
                 } else {
+                    // Move cursor right, clear selection
                     textbox->cursor_pos++;
                     textbox->selection_start = -1;
                 }
                 update_visible_lines(textbox);
             }
         } else if (event.key.keysym.sym == SDLK_UP || event.key.keysym.sym == SDLK_DOWN) {
-            int logical_font_size = current_theme->default_font_size;
-            char* font_file = current_theme->font_file ? current_theme->font_file : "FreeMono.ttf";
-            int logical_padding = current_theme->padding;
-
-            TTF_Font* font = TTF_OpenFont(font_file, logical_font_size);
-            if (!font) {
-                printf("Failed to load font: %s\n", TTF_GetError());
-                return;
-            }
-
             int max_text_width = textbox->w - 2 * logical_padding;
             int num_lines = 0;
             Line* lines = compute_visual_lines(textbox->text, max_text_width, font, &num_lines);
@@ -540,7 +629,6 @@ void update_textbox(TextBox* textbox, SDL_Event event) {
                             char ch[2] = {textbox->text[target_l.start + j], '\0'};
                             int char_w = 0;
                             TTF_SizeText(font, ch, &char_w, NULL);
-
                             if (accum_w + char_w / 2 > preferred_width) break;
                             accum_w += char_w;
                             target_offset++;
@@ -561,7 +649,6 @@ void update_textbox(TextBox* textbox, SDL_Event event) {
             }
 
             free(lines);
-            TTF_CloseFont(font);
 
             if (mod & KMOD_SHIFT) {
                 if (textbox->selection_start == -1) textbox->selection_start = old_cursor_pos;
@@ -579,11 +666,13 @@ void update_textbox(TextBox* textbox, SDL_Event event) {
                 update_visible_lines(textbox);
             }
         } else if (event.key.keysym.sym == SDLK_a && (mod & KMOD_CTRL)) {
+            // Ctrl+A: Select all text
             if (strlen(textbox->text) > 0) {
                 textbox->selection_start = 0;
                 textbox->cursor_pos = strlen(textbox->text);
             }
         } else if (event.key.keysym.sym == SDLK_c && (mod & KMOD_CTRL)) {
+            // Ctrl+C: Copy selected text to clipboard
             if (textbox->selection_start != -1) {
                 int sel_start = textbox->selection_start < textbox->cursor_pos ? textbox->selection_start : textbox->cursor_pos;
                 int sel_len = abs(textbox->cursor_pos - textbox->selection_start);
@@ -594,6 +683,7 @@ void update_textbox(TextBox* textbox, SDL_Event event) {
                 free(sel_text);
             }
         } else if (event.key.keysym.sym == SDLK_x && (mod & KMOD_CTRL)) {
+            // Ctrl+X: Cut selected text (copy to clipboard and delete)
             if (textbox->selection_start != -1) {
                 int sel_start = textbox->selection_start < textbox->cursor_pos ? textbox->selection_start : textbox->cursor_pos;
                 int sel_len = abs(textbox->cursor_pos - textbox->selection_start);
@@ -608,6 +698,7 @@ void update_textbox(TextBox* textbox, SDL_Event event) {
                 update_visible_lines(textbox);
             }
         } else if (event.key.keysym.sym == SDLK_v && (mod & KMOD_CTRL)) {
+            // Ctrl+V: Paste text from clipboard
             if (SDL_HasClipboardText()) {
                 char* paste_text = SDL_GetClipboardText();
                 if (paste_text) {
@@ -632,7 +723,10 @@ void update_textbox(TextBox* textbox, SDL_Event event) {
             }
         }
     }
+
+    TTF_CloseFont(font); // Free the font resource
 }
+
 
 void free_textbox(TextBox* textbox) {
     if (textbox) {

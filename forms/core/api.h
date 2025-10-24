@@ -8,6 +8,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_image.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -60,7 +61,7 @@ typedef struct {
  */
 static inline Parent* new_window_(char* title, int w, int h) {
     // Enable DPI scaling hint for Windows
-    SDL_SetHint(SDL_HINT_WINDOWS_DPI_SCALING, "1");
+  /*TODO: uncomment*/  //SDL_SetHint(SDL_HINT_WINDOWS_DPI_SCALING, "1");
 
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
         printf("SDL initialization failed: %s\n", SDL_GetError());
@@ -72,6 +73,14 @@ static inline Parent* new_window_(char* title, int w, int h) {
         SDL_Quit();
         return NULL;
     }
+    
+    // init sdl image
+    int imgFlags = IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_WEBP; // we can add more format support in the future
+	int initted = IMG_Init(imgFlags);
+	if ((initted & imgFlags) != imgFlags) {
+    printf("Warning: Not all image formats were initialized! IMG_Error: %s\n", IMG_GetError());
+	}
+//
 
     SDL_Window* sdl_win = SDL_CreateWindow(title,
                                            SDL_WINDOWPOS_CENTERED,
@@ -117,6 +126,7 @@ static inline Parent* new_window_(char* title, int w, int h) {
     parent->h = h;
     parent->color = (Color){0, 0, 0, 0};  // Transparent
     parent->is_open = true;
+    parent->title_height=0;
 
     return parent;
 }
@@ -135,6 +145,7 @@ static inline void destroy_parent(Parent* parent) {
         if (parent->base.sdl_window) {
             SDL_DestroyWindow(parent->base.sdl_window);
         }
+        IMG_Quit();
         TTF_Quit();
         SDL_Quit();
     }

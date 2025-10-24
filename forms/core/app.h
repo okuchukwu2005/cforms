@@ -70,6 +70,7 @@ void app_run_(Parent* parent) {
                 update_all_registered_texts(event);
                 update_all_registered_drops(event);
                 update_all_registered_progress_bars(event);
+                update_all_registered_images(event);
 
                 // Global text input management after all updates
                 if (is_any_text_widget_active()) {
@@ -90,8 +91,11 @@ void app_run_(Parent* parent) {
         render_all_registered_buttons();
 		render_all_registered_texts();
 		render_all_registered_progress_bars();
+		render_all_registered_images();
         present_(&parent->base);
     }
 
+	// free stuffs
+	free_all_registered_images();
     destroy_parent(parent);
 }

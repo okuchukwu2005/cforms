@@ -8,6 +8,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_image.h>
 #include <stdio.h>
 #include <math.h>
 #include "color.h"   // Access Color struct
@@ -320,6 +321,55 @@ static inline void draw_text_(Base* base, const char* text, int font_size, int x
 
     draw_text_from_font_(base, font, text, x, y, color, ALIGN_LEFT);
     TTF_CloseFont(font);
+}
+
+/**
+ * @brief Draw an image from file (loads and destroys texture each call).
+ * @param base Base struct with valid SDL_Renderer.
+ * @param file Path to image file.
+ * @param x    X coordinate.
+ * @param y    Y coordinate.
+ * @param w    Width (0 to use texture width).
+ * @param h    Height (0 to use texture height).
+ */
+void draw_image_(Base * base, const char * file, int x, int y, int w, int h){
+	SDL_Texture * texture = IMG_LoadTexture(base->sdl_renderer, file);
+	if(!texture){
+		printf("Failed to load img %s : %s\n",file, IMG_GetError());
+		return;
+	}
+	 // If width/height are 0, use the texture's actual size
+    if (w <= 0 || h <= 0) {
+        SDL_QueryTexture(texture, NULL, NULL, &w, &h);
+    }
+
+    SDL_Rect img_rect = {x, y, w, h}; // x, y, w, h
+    SDL_RenderCopy(base->sdl_renderer, texture, NULL, &img_rect);
+    
+	SDL_DestroyTexture(texture);
+}
+
+/**
+* @brief Draws an image using sdl texture
+* @param base for renderer
+* @param texture it contains file and renderer
+* @param x
+* @param y
+* @param w
+* @param h 
+*/
+void draw_image_from_texture_(Base *base, SDL_Texture * texture, int x, int y, int w, int h){
+	if(!texture){
+		printf("Failed to load img: %s\n", IMG_GetError());
+		return;
+	}
+	 // If width/height are 0, use the texture's actual size
+    if (w <= 0 || h <= 0) {
+        SDL_QueryTexture(texture, NULL, NULL, &w, &h);
+    }
+
+    SDL_Rect img_rect = {x, y, w, h}; // x, y, w, h
+    SDL_RenderCopy(base->sdl_renderer, texture, NULL, &img_rect);
 }
 
 #endif // GRAPHICS_H

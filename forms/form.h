@@ -12,4 +12,5 @@
 #include"widgets/button.h"
 #include"widgets/text.h"
 #include"widgets/progress.h"
+#include"widgets/image.h"
 #include"core/app.h"
