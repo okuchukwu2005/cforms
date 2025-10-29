@@ -79,7 +79,7 @@ void app_run_(Parent* parent) {
             }
         }
 
-        clear_screen_(&parent->base, COLOR_GREEN);  // TODO: Use current_theme->bg_primary here for themed bg?
+        clear_screen_(&parent->base, parent->color);  /// to change bg color use app.window->color = COLOR; 	
         render_all_registered_containers();
         render_all_registered_drops();
         render_all_registered_radios();

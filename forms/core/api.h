@@ -124,7 +124,7 @@ static inline Parent* new_window_(char* title, int w, int h) {
     parent->is_window = 1;
     parent->w = w;
     parent->h = h;
-    parent->color = (Color){0, 0, 0, 0};  // Transparent
+    parent->color = COLOR_GRAY;
     parent->is_open = true;
     parent->title_height=0;
 
