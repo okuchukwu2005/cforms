@@ -94,6 +94,13 @@ Entry* new_entry_(Parent* parent, int x, int y, int w, int max_length) {
     return new_entry; // Return the created entry
 }
 
+void set_entry_placeholder(Entry* entry, const char* placeholder) {
+    if (!entry) return;
+    free(entry->place_holder);  // Free previous
+    entry->place_holder = placeholder ? strdup(placeholder) : strdup(" ");
+    // in main never do entry->place_holder = "enter text"; (it will lead to double free)
+}
+
 // Renders the text entry widget to the screen
 // Parameters:
 // - entry: The Entry widget to render
