@@ -44,12 +44,20 @@ void render_image(Image * image){
         printf("Invalid image widget, renderer, or parent is not open\n");
         return;
     }
+
+    //set container clipping
+    if(image->parent->is_window == false){
+    SDL_Rect parent_bounds = get_parent_rect(image->parent);
+    SDL_RenderSetClipRect(image->parent->base.sdl_renderer, &parent_bounds);
+    }
         
      // Calculate absolute position relative to parent
     int abs_x = image->x + image->parent->x;
     int abs_y = image->y + image->parent->y + image->parent->title_height;
     
 	draw_image_from_texture_(&(image->parent->base), image->texture, abs_x, abs_y, image->w, image->h);
+	// Reset clipping
+	SDL_RenderSetClipRect(image->parent->base.sdl_renderer, NULL);
 }
 
 void update_image(Image *image, SDL_Event event){} // incase in the future, image needs to be resizeable, movable, ...

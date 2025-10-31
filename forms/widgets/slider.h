@@ -96,6 +96,11 @@ static inline void render_slider(Slider* slider) {
         printf("Invalid slider, renderer, or parent is not open\n");
         return;
     }
+	//set container clipping
+	if(slider->parent->is_window == false){
+	SDL_Rect parent_bounds = get_parent_rect(slider->parent);
+	SDL_RenderSetClipRect(slider->parent->base.sdl_renderer, &parent_bounds);
+	}
 
     // Fallback if no theme set
     if (!current_theme) {
@@ -144,6 +149,8 @@ static inline void render_slider(Slider* slider) {
         Color label_color = slider->custom_label_color ? *slider->custom_label_color : current_theme->text_secondary;
         draw_text_(base, slider->label, font_size, sx + sw + label_pad, sy + (sh / 2) - label_v_offset, label_color);
     }
+    // Reset clipping
+    SDL_RenderSetClipRect(slider->parent->base.sdl_renderer, NULL);
 }
 
 // -------- Update --------

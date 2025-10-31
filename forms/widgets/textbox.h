@@ -168,7 +168,11 @@ void render_textbox(TextBox* textbox) {
         printf("Invalid textbox, renderer, or parent is not open\n");
         return;
     }
-
+	//set container clipping
+	if(textbox->parent->is_window == false){
+	SDL_Rect parent_bounds = get_parent_rect(textbox->parent);
+	SDL_RenderSetClipRect(textbox->parent->base.sdl_renderer, &parent_bounds);
+	}
     // Default to light theme if none is set
     if (!current_theme) {
         current_theme = (Theme*)&THEME_LIGHT;
@@ -323,6 +327,8 @@ void render_textbox(TextBox* textbox) {
     free(lines);
     SDL_RenderSetClipRect(textbox->parent->base.sdl_renderer, NULL);
     TTF_CloseFont(font);
+    // Reset clipping
+    SDL_RenderSetClipRect(textbox->parent->base.sdl_renderer, NULL);
 }
 
 

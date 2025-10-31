@@ -107,6 +107,11 @@ static inline void render_radio_(Radio* radio) {
         printf("Invalid radio, renderer, or parent is not open\n");
         return;
     }
+	//set container clipping
+	if(radio->parent->is_window == false){
+	SDL_Rect parent_bounds = get_parent_rect(radio->parent);
+	SDL_RenderSetClipRect(radio->parent->base.sdl_renderer, &parent_bounds);
+	}
 
     // Fallback if no theme set
     if (!current_theme) {
@@ -149,6 +154,9 @@ static inline void render_radio_(Radio* radio) {
     draw_text_(base, radio->label, font_size,
                sx + sh + pad / 2, label_y,
                label_color);
+
+    // Reset clipping
+    SDL_RenderSetClipRect(radio->parent->base.sdl_renderer, NULL);
 }
 
 // -------- Update --------

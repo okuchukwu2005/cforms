@@ -58,6 +58,12 @@ void render_text(Text* text) {
         printf("Invalid text widget, renderer, or parent is not open\n");
         return;
     }
+    //set container clipping
+    if(text->parent->is_window == false){
+    SDL_Rect parent_bounds = get_parent_rect(text->parent);
+    SDL_RenderSetClipRect(text->parent->base.sdl_renderer, &parent_bounds);
+    }
+
       // Fallback if no theme set
     if (!current_theme) {
         // Use hardcoded defaults (your original colors)
@@ -80,6 +86,8 @@ void render_text(Text* text) {
             printf("Failed to load font for text rendering\n");
         }
     }
+    // Reset clipping
+    SDL_RenderSetClipRect(text->parent->base.sdl_renderer, NULL);
 }
 // Setters for overrides
 static inline void set_text_color(Text* text, Color color) {

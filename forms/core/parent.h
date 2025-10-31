@@ -153,4 +153,9 @@ static inline void destroy_parent(Parent* parent) {
     free(parent);
 }
 
+//=============== children helper func ====================
+SDL_Rect  get_parent_rect(Parent *p){
+	SDL_Rect rect ={p->x, p->y,p->w,p->h};
+	return rect;
+}
 #endif /* API_H */

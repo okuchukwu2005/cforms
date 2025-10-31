@@ -101,6 +101,11 @@ static inline void render_progress_bar(ProgressBar* progress_bar) {
         printf("Invalid progress bar, renderer, or parent is not open\n");
         return;
     }
+	//set container clipping
+	if(progress_bar->parent->is_window == false){
+	SDL_Rect parent_bounds = get_parent_rect(progress_bar->parent);
+	SDL_RenderSetClipRect(progress_bar->parent->base.sdl_renderer, &parent_bounds);
+	}
 
     // Fallback if no theme set
     if (!current_theme) {
@@ -148,6 +153,8 @@ static inline void render_progress_bar(ProgressBar* progress_bar) {
             TTF_CloseFont(font);
         }
     }
+    // Reset clipping
+    SDL_RenderSetClipRect(progress_bar->parent->base.sdl_renderer, NULL);
 }
 
 // -------- Update --------

@@ -77,6 +77,7 @@ Drop* new_drop_down_(Parent* parent, int x, int y, int w, int h, char** options,
     return drop;
 }
 
+
 // Setters for overrides
 static inline void set_drop_bg_color(Drop* drop, Color color) {
     if (drop) {
@@ -132,6 +133,13 @@ void render_drop_down_(Drop* drop) {
         return;
     }
 
+	//set container clipping
+	if(drop->parent->is_window == false){
+	SDL_Rect parent_bounds = get_parent_rect(drop->parent);
+	SDL_RenderSetClipRect(drop->parent->base.sdl_renderer, &parent_bounds);
+	}
+
+	//
     // Fallback if no theme set
     if (!current_theme) {
         current_theme = (Theme*)&THEME_LIGHT;  // Or set a static fallback
@@ -206,6 +214,8 @@ void render_drop_down_(Drop* drop) {
                        effective_font_size, sx + pad, option_text_y, text_color);
         }
     }
+    // Reset clipping
+        SDL_RenderSetClipRect(drop->parent->base.sdl_renderer, NULL);
 }
 
 void update_drop_down_(Drop* drop, SDL_Event event) {

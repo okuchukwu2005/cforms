@@ -106,6 +106,11 @@ void render_entry(Entry* entry) {
         printf("Invalid entry, renderer, or parent is not open\n");
         return;
     }
+	//set container clipping
+	if(entry->parent->is_window == false){
+	SDL_Rect parent_bounds = get_parent_rect(entry->parent);
+	SDL_RenderSetClipRect(entry->parent->base.sdl_renderer, &parent_bounds);
+	}
 
     // Default to light theme if none is set
     if (!current_theme) {
@@ -228,6 +233,9 @@ void render_entry(Entry* entry) {
     // Disable clipping after rendering
     SDL_RenderSetClipRect(entry->parent->base.sdl_renderer, NULL);
     TTF_CloseFont(font); // Free the font resource
+
+    // Reset clipping
+    SDL_RenderSetClipRect(entry->parent->base.sdl_renderer, NULL);
 }
 // Updates the visible portion of the text when the cursor moves or text changes
 // Parameters:

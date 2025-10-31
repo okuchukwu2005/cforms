@@ -90,6 +90,11 @@ void render_button(Button* button) {
         printf("Invalid button, renderer, or parent is not open\n");
         return;
     }
+	//set container clipping
+	if(button->parent->is_window == false){
+	SDL_Rect parent_bounds = get_parent_rect(button->parent);
+	SDL_RenderSetClipRect(button->parent->base.sdl_renderer, &parent_bounds);
+	}
 
     // Fallback if no theme set
     if (!current_theme) {
@@ -133,6 +138,8 @@ void render_button(Button* button) {
             TTF_CloseFont(font);
         }
     }
+    // Reset clipping
+    SDL_RenderSetClipRect(button->parent->base.sdl_renderer, NULL);
 }
 
 void update_button(Button* button, SDL_Event event) {
