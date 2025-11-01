@@ -59,19 +59,17 @@ typedef struct {
  * @param h The height of the window (logical size).
  * @return Pointer to the created Parent, or NULL on failure.
  */
-static inline Parent* new_window_(char* title, int w, int h) {
+static inline Parent new_window(char* title, int w, int h) {
     // Enable DPI scaling hint for Windows
-  /*TODO: uncomment*/  //SDL_SetHint(SDL_HINT_WINDOWS_DPI_SCALING, "1");
+  SDL_SetHint(SDL_HINT_WINDOWS_DPI_SCALING, "1");
 
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
         printf("SDL initialization failed: %s\n", SDL_GetError());
-        return NULL;
     }
 
     if (TTF_Init() == -1) {
         printf("TTF initialization failed: %s\n", TTF_GetError());
         SDL_Quit();
-        return NULL;
     }
     
     // init sdl image
@@ -91,7 +89,6 @@ static inline Parent* new_window_(char* title, int w, int h) {
         printf("Window creation failed: %s\n", SDL_GetError());
         TTF_Quit();
         SDL_Quit();
-        return NULL;
     }
 
     SDL_Renderer* sdl_ren = SDL_CreateRenderer(sdl_win, -1, SDL_RENDERER_ACCELERATED);
@@ -100,7 +97,6 @@ static inline Parent* new_window_(char* title, int w, int h) {
         SDL_DestroyWindow(sdl_win);
         TTF_Quit();
         SDL_Quit();
-        return NULL;
     }
 
     // Compute DPI scale (use width for uniform assumption)
@@ -108,25 +104,17 @@ static inline Parent* new_window_(char* title, int w, int h) {
     SDL_GetRendererOutputSize(sdl_ren, &pw, &ph);
     float dpi_scale = (float)pw / w;  // Assume uniform x/y scale
 
-    Parent* parent = (Parent*)malloc(sizeof(Parent));
-    if (!parent) {
-        SDL_DestroyRenderer(sdl_ren);
-        SDL_DestroyWindow(sdl_win);
-        TTF_Quit();
-        SDL_Quit();
-        return NULL;
-    }
+    Parent parent;
 
-    memset(parent, 0, sizeof(Parent));
-    parent->base.sdl_window = sdl_win;
-    parent->base.sdl_renderer = sdl_ren;
-    parent->base.dpi_scale = dpi_scale > 1.0f ? dpi_scale : 1.0f;  // Minimum 1.0
-    parent->is_window = 1;
-    parent->w = w;
-    parent->h = h;
-    parent->color = COLOR_GRAY;
-    parent->is_open = true;
-    parent->title_height=0;
+    parent.base.sdl_window = sdl_win;
+    parent.base.sdl_renderer = sdl_ren;
+    parent.base.dpi_scale = dpi_scale > 1.0f ? dpi_scale : 1.0f;  // Minimum 1.0
+    parent.is_window = 1;
+    parent.w = w;
+    parent.h = h;
+    parent.color = COLOR_GRAY;
+    parent.is_open = true;
+    parent.title_height=0;
 
     return parent;
 }

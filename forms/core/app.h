@@ -1,9 +1,9 @@
 //------------------------- APP ___________
 typedef struct {
-    Parent* window; // Window struct from window.h
+    Parent window; // Window struct from window.h
 } App;
 
-App init(void) {
+App init_app(void) {
     App app = {0}; // Initialize struct members to zero
     
     // Set default theme (e.g., light mode)
@@ -31,7 +31,7 @@ int is_any_text_widget_active(void) {
     return 0;
 }
 
-void app_run_(Parent* parent) {
+void app_run_(Parent *parent) {
     SDL_Event event;
     int running = 1;
     while (running) {

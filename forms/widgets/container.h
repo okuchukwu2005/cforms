@@ -8,53 +8,49 @@
 static Parent* container_widgets[MAX_CONTAINERS];
 static int containers_count = 0;
 
-static inline void register_widget_container(Parent* container) {
+static inline void register_container(Parent* container) {
     if (containers_count < MAX_CONTAINERS) {
         container_widgets[containers_count] = container;
         containers_count++;
     }
 }
 
-static inline Parent* new_container_(Parent* root, int x, int y, int w, int h) {
+static inline Parent new_container(Parent* root, int x, int y, int w, int h) {
     if (!root || !root->is_window) {
-        return NULL;
+        printf("invalid parent passed on container!\n");
     }
 
-    Parent* parent = malloc(sizeof(Parent));
-    if (!parent) return NULL;
-    memset(parent, 0, sizeof(Parent));
-
+    Parent parent;
     // Containers don’t own SDL_Window; just reuse renderer from root
-    parent->base.sdl_window   = NULL;
-    parent->base.sdl_renderer = root->base.sdl_renderer;
-    parent->base.dpi_scale    = root->base.dpi_scale;  // Propagate DPI scale from root
+    parent.base.sdl_window   = NULL;
+    parent.base.sdl_renderer = root->base.sdl_renderer;
+    parent.base.dpi_scale    = root->base.dpi_scale;  // Propagate DPI scale from root
 
-    parent->is_window = 0;
-    parent->x = x;
-    parent->y = y;
-    parent->w = w;
-    parent->h = h;
-    parent->color = (Color){0, 0, 0, 0}; // Default transparent, since color is now from theme
+    parent.is_window = 0;
+    parent.x = x;
+    parent.y = y;
+    parent.w = w;
+    parent.h = h;
+    parent.color = (Color){0, 0, 0, 0}; // Default transparent, since color is now from theme
 
     // Defaults
-    parent->moveable = 0;
-    parent->title_bar = NULL;
-    parent->has_title_bar = false;
-    parent->is_dragging = false;
-    parent->drag_offset_x = 0;
-    parent->drag_offset_y = 0;
-    parent->closeable = false;
-    parent->resizeable = false;
-    parent->is_resizing = false;
-    parent->resize_zone = 5;
-    parent->is_open = true;
-    parent->title_height = 0;
+    parent.moveable = 0;
+    parent.title_bar = NULL;
+    parent.has_title_bar = false;
+    parent.is_dragging = false;
+    parent.drag_offset_x = 0;
+    parent.drag_offset_y = 0;
+    parent.closeable = false;
+    parent.resizeable = false;
+    parent.is_resizing = false;
+    parent.resize_zone = 5;
+    parent.is_open = true;
+    parent.title_height = 0;
 
-    register_widget_container(parent);
     return parent;
 }
 
-static inline void set_container_properties_(Parent* container,
+static inline void set_container_properties(Parent* container,
                                bool moveable,
                                const char* title,
                                bool has_title_bar,
@@ -231,8 +227,6 @@ static inline void free_con_(Parent* parent) {
     if (!parent) return;
     if (parent->is_window) {
         destroy_parent(parent);
-    } else {
-        free(parent);
     }
 }
 

@@ -21,35 +21,24 @@ typedef struct {
     TextAlign align;           // Alignment (LEFT, CENTER, RIGHT)
 } Text;
 
-void register_widget_text(Text* text);
-
-Text* new_text_(Parent* parent, int x, int y, const char* content, int font_size, TextAlign align) {
+Text new_text(Parent* parent, int x, int y, const char* content, int font_size, TextAlign align) {
     if (!parent || !parent->base.sdl_renderer) {
         printf("Invalid parent or renderer\n");
-        return NULL;
     }
 
-    Text* new_text = (Text*)malloc(sizeof(Text));
-    if (!new_text) {
-        printf("Failed to allocate memory for text widget\n");
-        return NULL;
-    }
-
-    new_text->parent = parent;
-    new_text->x = x;
-    new_text->y = y;
-    new_text->content = strdup(content);
-    if (!new_text->content) {
+    Text new_text;
+    
+    new_text.parent = parent;
+    new_text.x = x;
+    new_text.y = y;
+    new_text.content = strdup(content);
+    if (!new_text.content) {
         printf("Failed to allocate memory for text content\n");
-        free(new_text);
-        return NULL;
     }
-    new_text->font_size = font_size;
-    new_text->color = NULL;
-    new_text->align = align;
+    new_text.font_size = font_size;
+    new_text.color = NULL;
+    new_text.align = align;
 
-    // Register widget
-    register_widget_text(new_text);
     return new_text;
 }
 
@@ -110,13 +99,12 @@ void update_text(Text* text, SDL_Event event) {
     (void)event;
 }
 
-void free_text(Text* text) {
-    if (text) {
-        free(text->content);
-        if(text->color) {free(text->color);}
-        free(text);
-    }
+void free_text(Text *text) {
+    if (!text) return;
+    free(text->content);
+    free(text->color);
 }
+
 
 // Registration
 #define MAX_TEXTS 100
@@ -124,7 +112,7 @@ void free_text(Text* text) {
 Text* text_widgets[MAX_TEXTS];
 int texts_count = 0;
 
-void register_widget_text(Text* text) {
+void register_text(Text* text) {
     if (texts_count < MAX_TEXTS) {
         text_widgets[texts_count] = text;
         texts_count++;

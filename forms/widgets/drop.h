@@ -34,46 +34,37 @@ typedef struct {
 static Drop* drop_widgets[MAX_DROPS];
 static int drops_count = 0;
 
-static inline void register_widget_drop(Drop* drop);
 
-Drop* new_drop_down_(Parent* parent, int x, int y, int w, int h, char** options, int option_count) {
+Drop new_drop_down(Parent* parent, int x, int y, int w, int h, char** options, int option_count) {
     if (!parent || !parent->base.sdl_renderer) {
         printf("Invalid parent or renderer\n");
-        return NULL;
     }
 
-    Drop* drop = (Drop*)malloc(sizeof(Drop));
-    if (!drop) {
-        printf("Failed to allocate memory for Drop\n");
-        return NULL;
-    }
+    Drop drop;
+    
 
     // Initialize fields
-    drop->parent = parent;
-    drop->x = x;
-    drop->y = y;
-    drop->w = w;
-    drop->h = h;
-    drop->options = options; // Caller manages options memory
-    drop->option_count = option_count;
-    drop->selected_index = -1; // No option selected by default
-    drop->is_expanded = false;
-    drop->is_hovered = false;
-    drop->font_size = 0; // 0 = use theme default
-    drop->place_holder = strdup("select option"); // Copy string to avoid issues
-    if (!drop->place_holder) {
-        free(drop);
+    drop.parent = parent;
+    drop.x = x;
+    drop.y = y;
+    drop.w = w;
+    drop.h = h;
+    drop.options = options; // Caller manages options memory
+    drop.option_count = option_count;
+    drop.selected_index = -1; // No option selected by default
+    drop.is_expanded = false;
+    drop.is_hovered = false;
+    drop.font_size = 0; // 0 = use theme default
+    drop.place_holder = strdup("select option"); // Copy string to avoid issues
+    if (!drop.place_holder) {
         printf("Failed to allocate memory for placeholder\n");
-        return NULL;
     }
     // Init overrides to NULL (use theme)
-    drop->custom_bg_color = NULL;
-    drop->custom_button_color = NULL;
-    drop->custom_text_color = NULL;
-    drop->custom_highlight_color = NULL;
+    drop.custom_bg_color = NULL;
+    drop.custom_button_color = NULL;
+    drop.custom_text_color = NULL;
+    drop.custom_highlight_color = NULL;
 
-    // Register the dropdown
-    register_widget_drop(drop);
     return drop;
 }
 
@@ -281,10 +272,9 @@ void free_drop_(Drop* drop) {
     if (drop->custom_button_color) free(drop->custom_button_color);
     if (drop->custom_text_color) free(drop->custom_text_color);
     if (drop->custom_highlight_color) free(drop->custom_highlight_color);
-    free(drop);
 }
 
-static inline void register_widget_drop(Drop* drop) {
+static inline void register_drop(Drop* drop) {
     if (drops_count < MAX_DROPS) {
         drop_widgets[drops_count] = drop;
         drops_count++;
