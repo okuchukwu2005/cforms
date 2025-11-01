@@ -8,34 +8,25 @@ typedef struct{
 	SDL_Texture *texture;
 }Image;
 
-void register_widget_image(Image * image); // function prototype
 
-Image * new_image_(Parent * parent, int x, int y, const char * file_path, int w, int h  ){
+Image new_image(Parent * parent, int x, int y, const char * file_path, int w, int h  ){
 	if(!parent || !parent->base.sdl_renderer){
 		printf("Invalid parent or renderer for image widget");
-		return NULL;
 	}
 	
-	Image *new_image = (Image*)malloc(sizeof(Image));
+	Image new_image;
 	
-	if(!new_image){
-		printf("failed to allocate memory for image");
-		return NULL;
-	}
-	new_image->parent = parent;
-	new_image->x=x;
-	new_image->y=y;
-	new_image->file_path=file_path;
-	new_image->w=w;
-	new_image->h=h;
-	new_image->texture= IMG_LoadTexture(parent->base.sdl_renderer, file_path);
-	if(!new_image->texture){
+	new_image.parent = parent;
+	new_image.x=x;
+	new_image.y=y;
+	new_image.file_path=file_path;
+	new_image.w=w;
+	new_image.h=h;
+	new_image.texture= IMG_LoadTexture(parent->base.sdl_renderer, file_path);
+	if(!new_image.texture){
 		printf("Failed to load img %s : %s\n", file_path, IMG_GetError());
-		free(new_image);
-		return NULL;
 	}
 	
-	register_widget_image(new_image);
 	return new_image;
 }
 
@@ -68,7 +59,6 @@ void free_image(Image *image) {
         	SDL_DestroyTexture(image->texture);
         	image->texture=NULL;
         }
-        free(image);
     }
 }
 
@@ -79,7 +69,7 @@ Image * image_widgets[MAX_IMAGES];
 
 int images_count =0;
 
-void register_widget_image(Image* image) {
+void register_image(Image* image) {
     if (images_count < MAX_IMAGES) {
         image_widgets[images_count] = image;
         images_count++;
