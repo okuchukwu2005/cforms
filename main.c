@@ -39,19 +39,25 @@ int main(void) {
          register_drop(&drop_down);
 // ---------- SLIDER DEMO ----------
     // Create a slider in container (horizontal, 100px wide, 20px high, range 0-100, starting at 50)
-    Slider* slider1 = new_slider(&container, 10, 370, 250, 15, 0, 100, 50, "Volume");
+    Slider slider = new_slider(&container, 10, 370, 250, 15, 0, 100, 50, "Volume");
+    register_slider(&slider);
 
- 	 Entry* entry =  new_entry_(&container2, 20, 70, 300, 2048);
- 	 set_entry_placeholder(entry, "enter text");
+ 	 Entry entry =  new_entry(&container2, 20, 70, 300, 2048);
+ 	 set_entry_placeholder(&entry, "enter text");
+	register_entry(&entry);
 
 // 
-     TextBox* texty = new_textbox_(&container2, 20, 150, 300, 1024);
-// 
-   	Button* button = new_button_(&container2, 100, 400, 120, 40, "Click Me", OVERRIDE);
+     TextBox texty = new_textbox(&container2, 20, 150, 300, 1024);
 
-	ProgressBar* prox = new_progress_bar_(&container2, 20, 500, 250, 15, 0, 100, 50, true);
+    register_textbox(&texty);
 
-    
+   	Button button = new_button(&container2, 100, 400, 120, 40, "Click Me", OVERRIDE);
+	register_button(&button);
+
+	ProgressBar prox = new_progress_bar(&container2, 20, 500, 250, 15, 0, 100, 50, true);
+
+    register_progress_bar(&prox);
+
 
     app_run_(&app.window);
 

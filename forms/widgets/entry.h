@@ -19,8 +19,6 @@ typedef struct {
     int is_mouse_selecting;    // Flag to track if mouse is being used to select text
 } Entry;
 
-// Forward declaration of function to register an entry widget in a global array
-void register_widget_entry(Entry* entry);
 
 // Creates a new text entry widget with specified properties
 // Parameters:
@@ -29,11 +27,10 @@ void register_widget_entry(Entry* entry);
 // - w: Logical width of the entry
 // - max_length: Maximum number of characters allowed
 // Returns: Pointer to the new Entry or NULL on failure
-Entry* new_entry_(Parent* parent, int x, int y, int w, int max_length) {
+Entry new_entry(Parent* parent, int x, int y, int w, int max_length) {
     // Validate the parent and its renderer to ensure they exist
     if (!parent || !parent->base.sdl_renderer) {
         printf("Invalid parent or renderer\n");
-        return NULL; // Return NULL to indicate failure
     }
 
     // If no theme is set, default to a light theme to ensure consistent styling
@@ -46,51 +43,41 @@ Entry* new_entry_(Parent* parent, int x, int y, int w, int max_length) {
     int logical_padding = current_theme->padding;
 
     // Allocate memory for the new Entry struct
-    Entry* new_entry = (Entry*)malloc(sizeof(Entry));
-    if (!new_entry) {
-        printf("Failed to allocate memory for entry\n");
-        return NULL; // Return NULL if memory allocation fails
-    }
+    Entry new_entry;
 
     // Initialize the entry's parent pointer
-    new_entry->parent = parent;
+    new_entry.parent = parent;
 
     // Allocate and set a default placeholder (single space) to avoid null pointer issues
-    new_entry->place_holder = strdup(" ");
-    if (!new_entry->place_holder) {
+    new_entry.place_holder = strdup(" ");
+    if(!new_entry.place_holder) {
         printf("Failed to allocate memory for placeholder\n");
-        free(new_entry); // Clean up allocated memory
-        return NULL; // Return NULL if placeholder allocation fails
     }
 
     // Set position and dimensions (logical coordinates)
-    new_entry->x = x;
-    new_entry->y = y;
-    new_entry->w = w;
-    new_entry->h = logical_font_size + 2 * logical_padding; // Height based on font size plus padding
+    new_entry.x = x;
+    new_entry.y = y;
+    new_entry.w = w;
+    new_entry.h = logical_font_size + 2 * logical_padding; // Height based on font size plus padding
 
     // Set maximum text length
-    new_entry->max_length = max_length;
+    new_entry.max_length = max_length;
 
     // Allocate memory for the text buffer, including space for null terminator
-    new_entry->text = (char*)malloc(max_length + 1);
-    if (!new_entry->text) {
+    new_entry.text = (char*)malloc(max_length + 1);
+    if (!new_entry.text) {
         printf("Failed to allocate memory for entry text\n");
-        free(new_entry->place_holder); // Clean up placeholder
-        free(new_entry); // Clean up entry
-        return NULL; // Return NULL if text buffer allocation fails
+        free(new_entry.place_holder); // Clean up placeholder
     }
 
     // Initialize text buffer as empty
-    new_entry->text[0] = '\0';
-    new_entry->is_active = 0; // Entry is not active by default
-    new_entry->cursor_pos = 0; // Cursor starts at the beginning
-    new_entry->selection_start = -1; // No selection initially
-    new_entry->visible_text_start = 0; // Start displaying text from the beginning
-    new_entry->is_mouse_selecting = 0; // Initialize mouse selection flag
+    new_entry.text[0] = '\0';
+    new_entry.is_active = 0; // Entry is not active by default
+    new_entry.cursor_pos = 0; // Cursor starts at the beginning
+    new_entry.selection_start = -1; // No selection initially
+    new_entry.visible_text_start = 0; // Start displaying text from the beginning
+    new_entry.is_mouse_selecting = 0; // Initialize mouse selection flag
 
-    // Register the entry in the global widget array for rendering and updates
-    register_widget_entry(new_entry);
     return new_entry; // Return the created entry
 }
 
@@ -591,7 +578,6 @@ void free_entry(Entry* entry) {
     if (entry) {
         free(entry->text); // Free the text buffer
         free(entry->place_holder); // Free the placeholder text
-        free(entry); // Free the entry itself
     }
 }
 
@@ -604,7 +590,7 @@ int entrys_count = 0; // Tracks the number of registered entries
 // Registers an entry widget in the global array
 // Parameters:
 // - entry: The Entry widget to register
-void register_widget_entry(Entry* entry) {
+void register_entry(Entry* entry) {
     if (entrys_count < MAX_ENTRYS) {
         entry_widgets[entrys_count] = entry; // Add entry to the array
         entrys_count++; // Increment the count

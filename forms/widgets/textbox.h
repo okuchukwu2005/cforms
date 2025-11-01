@@ -98,10 +98,9 @@ typedef struct {
 
 void register_widget_textbox(TextBox* textbox);
 
-TextBox* new_textbox_(Parent* parent, int x, int y, int w, int max_length) {
+TextBox new_textbox(Parent* parent, int x, int y, int w, int max_length) {
     if (!parent || !parent->base.sdl_renderer) {
         printf("Invalid parent or renderer\n");
-        return NULL;
     }
 
     // Fallback if no theme set
@@ -113,49 +112,39 @@ TextBox* new_textbox_(Parent* parent, int x, int y, int w, int max_length) {
     char* font_file = current_theme->font_file ? current_theme->font_file : "FreeMono.ttf";
     int logical_padding = current_theme->padding;
 
-    TextBox* new_textbox = (TextBox*)malloc(sizeof(TextBox));
-    if (!new_textbox) {
-        printf("Failed to allocate memory for textbox\n");
-        return NULL;
-    }
-
-    new_textbox->parent = parent;
-    new_textbox->place_holder = strdup(" "); // Default placeholder
-    if (!new_textbox->place_holder) {
+    TextBox new_textbox;
+    
+    new_textbox.parent = parent;
+    new_textbox.place_holder = strdup(" "); // Default placeholder
+    if (!new_textbox.place_holder) {
         printf("Failed to allocate memory for placeholder\n");
-        free(new_textbox);
-        return NULL;
     }
-    new_textbox->x = x;
-    new_textbox->y = y;
-    new_textbox->w = w;
-    new_textbox->h = 10 * (logical_font_size + logical_padding / 2);  // Example: ~10 lines tall logically
-    new_textbox->max_length = max_length;
-    new_textbox->text = (char*)malloc(max_length + 1);
-    if (!new_textbox->text) {
+    new_textbox.x = x;
+    new_textbox.y = y;
+    new_textbox.w = w;
+    new_textbox.h = 10 * (logical_font_size + logical_padding / 2);  // Example: ~10 lines tall logically
+    new_textbox.max_length = max_length;
+    new_textbox.text = (char*)malloc(max_length + 1);
+    if (!new_textbox.text) {
         printf("Failed to allocate memory for textbox text\n");
-        free(new_textbox->place_holder);
-        free(new_textbox);
-        return NULL;
+        free(new_textbox.place_holder);
     }
-    new_textbox->text[0] = '\0';
-    new_textbox->is_active = 0;
-    new_textbox->cursor_pos = 0;
-    new_textbox->selection_start = -1;
-    new_textbox->visible_line_start = 0;
-    new_textbox->is_mouse_selecting = 0; // Initialize mouse selection flag
+    new_textbox.text[0] = '\0';
+    new_textbox.is_active = 0;
+    new_textbox.cursor_pos = 0;
+    new_textbox.selection_start = -1;
+    new_textbox.visible_line_start = 0;
+    new_textbox.is_mouse_selecting = 0; // Initialize mouse selection flag
 
     // Compute line_height from font (logical)
     TTF_Font* font = TTF_OpenFont(font_file, logical_font_size);
     if (font) {
-        new_textbox->line_height = TTF_FontHeight(font);
+        new_textbox.line_height = TTF_FontHeight(font);
         TTF_CloseFont(font);
     } else {
-        new_textbox->line_height = logical_font_size + logical_padding / 2;  // Fallback
+        new_textbox.line_height = logical_font_size + logical_padding / 2;  // Fallback
     }
 
-    // Register widget
-    register_widget_textbox(new_textbox);
     return new_textbox;
 }
 
@@ -738,7 +727,6 @@ void free_textbox(TextBox* textbox) {
     if (textbox) {
         free(textbox->text);
         free(textbox->place_holder);
-        free(textbox);
     }
 }
 
@@ -748,7 +736,7 @@ void free_textbox(TextBox* textbox) {
 TextBox* textbox_widgets[MAX_TEXTBOXS];
 int textboxs_count = 0;
 
-void register_widget_textbox(TextBox* textbox) {
+void register_textbox(TextBox* textbox) {
     if (textboxs_count < MAX_TEXTBOXS) {
         textbox_widgets[textboxs_count] = textbox;
         textboxs_count++;

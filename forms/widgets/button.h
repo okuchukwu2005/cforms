@@ -29,39 +29,29 @@ typedef struct {
     Color* custom_text_color;  // Optional override for text color (NULL = use theme)
 } Button;
 
-void register_widget_button(Button* button);
 
-Button* new_button_(Parent* parent, int x, int y, int w, int h, const char* label, void (*callback)(void)) {
+Button new_button(Parent* parent, int x, int y, int w, int h, const char* label, void (*callback)(void)) {
     if (!parent || !parent->base.sdl_renderer) {
         printf("Invalid parent or renderer\n");
-        return NULL;
     }
 
-    Button* new_button = (Button*)malloc(sizeof(Button));
-    if (!new_button) {
-        printf("Failed to allocate memory for button\n");
-        return NULL;
-    }
+    Button new_button;
 
-    new_button->parent = parent;
-    new_button->x = x;
-    new_button->y = y;
-    new_button->w = w;
-    new_button->h = h;
-    new_button->label = strdup(label);
-    if (!new_button->label) {
+    new_button.parent = parent;
+    new_button.x = x;
+    new_button.y = y;
+    new_button.w = w;
+    new_button.h = h;
+    new_button.label = strdup(label);
+    if (!new_button.label) {
         printf("Failed to allocate memory for button label\n");
-        free(new_button);
-        return NULL;
     }
-    new_button->callback = callback;
-    new_button->is_hovered = 0;
-    new_button->is_pressed = 0;
-    new_button->custom_bg_color = NULL;
-    new_button->custom_text_color = NULL;
+    new_button.callback = callback;
+    new_button.is_hovered = 0;
+    new_button.is_pressed = 0;
+    new_button.custom_bg_color = NULL;
+    new_button.custom_text_color = NULL;
 
-    // Register widget
-    register_widget_button(new_button);
     return new_button;
 }
 
@@ -180,7 +170,6 @@ void free_button(Button* button) {
         free(button->label);
         if (button->custom_bg_color) free(button->custom_bg_color);
         if (button->custom_text_color) free(button->custom_text_color);
-        free(button);
     }
 }
 
@@ -190,7 +179,7 @@ void free_button(Button* button) {
 Button* button_widgets[MAX_BUTTONS];
 int buttons_count = 0;
 
-void register_widget_button(Button* button) {
+void register_button(Button* button) {
     if (buttons_count < MAX_BUTTONS) {
         button_widgets[buttons_count] = button;
         buttons_count++;

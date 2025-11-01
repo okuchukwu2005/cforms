@@ -3,18 +3,6 @@
 
 #include <math.h>  // For roundf in scaling
 
-#define MAX_CONTAINERS 100
-
-static Parent* container_widgets[MAX_CONTAINERS];
-static int containers_count = 0;
-
-static inline void register_container(Parent* container) {
-    if (containers_count < MAX_CONTAINERS) {
-        container_widgets[containers_count] = container;
-        containers_count++;
-    }
-}
-
 static inline Parent new_container(Parent* root, int x, int y, int w, int h) {
     if (!root || !root->is_window) {
         printf("invalid parent passed on container!\n");
@@ -208,6 +196,20 @@ static inline void update_container(Parent* container, SDL_Event event) {
                 }
             }
             break;
+    }
+}
+
+// registering stuffs
+
+#define MAX_CONTAINERS 100
+
+static Parent* container_widgets[MAX_CONTAINERS];
+static int containers_count = 0;
+
+static inline void register_container(Parent* container) {
+    if (containers_count < MAX_CONTAINERS) {
+        container_widgets[containers_count] = container;
+        containers_count++;
     }
 }
 

@@ -22,39 +22,28 @@ typedef struct {
     Color* custom_text_color;  // Optional override for text color (NULL = use theme)
 } ProgressBar;
 
-#define MAX_PROGRESS_BARS 100
-static ProgressBar* progress_bar_widgets[MAX_PROGRESS_BARS];
-static int progress_bars_count = 0;
 
-static inline void register_widget_progress_bar(ProgressBar* progress_bar);
 
 // -------- Create --------
-static inline ProgressBar* new_progress_bar_(Parent* parent, int x, int y, int w, int h, int min, int max, int start_value, bool show_percentage) {
+static inline ProgressBar new_progress_bar(Parent* parent, int x, int y, int w, int h, int min, int max, int start_value, bool show_percentage) {
     if (!parent || !parent->base.sdl_renderer) {
         printf("Invalid parent or renderer\n");
-        return NULL;
     }
 
-    ProgressBar* progress_bar = (ProgressBar*)malloc(sizeof(ProgressBar));
-    if (!progress_bar) {
-        printf("Failed to allocate ProgressBar\n");
-        return NULL;
-    }
+    ProgressBar progress_bar;
+    progress_bar.parent = parent;
+    progress_bar.x = x;
+    progress_bar.y = y;
+    progress_bar.w = w;
+    progress_bar.h = h;
+    progress_bar.min = min;
+    progress_bar.max = max;
+    progress_bar.value = start_value;
+    progress_bar.show_percentage = show_percentage;
+    progress_bar.custom_bg_color = NULL;
+    progress_bar.custom_fill_color = NULL;
+    progress_bar.custom_text_color = NULL;
 
-    progress_bar->parent = parent;
-    progress_bar->x = x;
-    progress_bar->y = y;
-    progress_bar->w = w;
-    progress_bar->h = h;
-    progress_bar->min = min;
-    progress_bar->max = max;
-    progress_bar->value = start_value;
-    progress_bar->show_percentage = show_percentage;
-    progress_bar->custom_bg_color = NULL;
-    progress_bar->custom_fill_color = NULL;
-    progress_bar->custom_text_color = NULL;
-
-    register_widget_progress_bar(progress_bar);
     return progress_bar;
 }
 
@@ -169,12 +158,16 @@ static inline void free_progress_bar(ProgressBar* progress_bar) {
         if (progress_bar->custom_bg_color) free(progress_bar->custom_bg_color);
         if (progress_bar->custom_fill_color) free(progress_bar->custom_fill_color);
         if (progress_bar->custom_text_color) free(progress_bar->custom_text_color);
-        free(progress_bar);
     }
 }
 
+
+#define MAX_PROGRESS_BARS 100
+static ProgressBar* progress_bar_widgets[MAX_PROGRESS_BARS];
+static int progress_bars_count = 0;
+
 // -------- Helpers for all Progress Bars --------
-static inline void register_widget_progress_bar(ProgressBar* progress_bar) {
+static inline void register_progress_bar(ProgressBar* progress_bar) {
     if (progress_bars_count < MAX_PROGRESS_BARS) {
         progress_bar_widgets[progress_bars_count++] = progress_bar;
     }

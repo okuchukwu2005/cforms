@@ -20,45 +20,30 @@ typedef struct {
     Color* custom_label_color;   // Optional override for label color (NULL = use theme)
 } Slider;
 
-#define MAX_SLIDERS 100
-static Slider* sliders[MAX_SLIDERS];
-static int sliders_count = 0;
-
-// -------- Register --------
-static inline void register_widget_slider(Slider* slider) {
-    if (sliders_count < MAX_SLIDERS) {
-        sliders[sliders_count++] = slider;
-    }
-}
 
 // -------- Create --------
-static inline Slider* new_slider(Parent* parent, int x, int y, int w, int h, int min, int max, int start_value, const char* label) {
+static inline Slider new_slider(Parent* parent, int x, int y, int w, int h, int min, int max, int start_value, const char* label) {
     if (!parent || !parent->base.sdl_renderer) {
         printf("Invalid parent or renderer\n");
-        return NULL;
     }
 
-    Slider* slider = (Slider*)malloc(sizeof(Slider));
-    if (!slider) {
-        printf("Failed to allocate Slider\n");
-        return NULL;
-    }
-    slider->parent = parent;
-    slider->x = x;
-    slider->y = y;
-    slider->w = w;
-    slider->h = h;
-    slider->min = min;
-    slider->max = max;
-    slider->value = start_value;
-    slider->label = label ? strdup(label) : NULL;  // Copy label if provided
-    slider->dragging = false;
-    slider->is_hovered = false;
-    slider->custom_track_color = NULL;
-    slider->custom_thumb_color = NULL;
-    slider->custom_label_color = NULL;
+    Slider slider;
+    
+    slider.parent = parent;
+    slider.x = x;
+    slider.y = y;
+    slider.w = w;
+    slider.h = h;
+    slider.min = min;
+    slider.max = max;
+    slider.value = start_value;
+    slider.label = label ? strdup(label) : NULL;  // Copy label if provided
+    slider.dragging = false;
+    slider.is_hovered = false;
+    slider.custom_track_color = NULL;
+    slider.custom_thumb_color = NULL;
+    slider.custom_label_color = NULL;
 
-    register_widget_slider(slider);
     return slider;
 }
 
@@ -204,7 +189,18 @@ static inline void free_slider(Slider* slider) {
         if (slider->custom_track_color) free(slider->custom_track_color);
         if (slider->custom_thumb_color) free(slider->custom_thumb_color);
         if (slider->custom_label_color) free(slider->custom_label_color);
-        free(slider);
+    }
+}
+
+
+#define MAX_SLIDERS 100
+static Slider* sliders[MAX_SLIDERS];
+static int sliders_count = 0;
+
+// -------- Register --------
+static inline void register_slider(Slider* slider) {
+    if (sliders_count < MAX_SLIDERS) {
+        sliders[sliders_count++] = slider;
     }
 }
 
